@@ -254,7 +254,7 @@ async function syncCodeforces(platformAccount) {
       });
       
       if (!existingSubmission) {
-        // Create new submission
+        // Create new submission - ENSURE platform is set to 'codeforces'
         const submission = new Submission({
           user: platformAccount.user,
           problem: problem._id,
@@ -264,7 +264,8 @@ async function syncCodeforces(platformAccount) {
           code: '', // Codeforces API doesn't provide the code
           timeTaken: sub.timeConsumedMillis / 1000, // Convert to seconds
           memoryUsed: sub.memoryConsumedBytes / 1024, // Convert to KB
-          submittedAt: new Date(sub.creationTimeSeconds * 1000) // Convert Unix timestamp to Date
+          submittedAt: new Date(sub.creationTimeSeconds * 1000), // Convert Unix timestamp to Date
+          platform: 'codeforces' // Explicitly set platform to 'codeforces'
         });
         
         await submission.save();
@@ -371,6 +372,7 @@ async function syncHackerRank(platformAccount) {
 }
 
 module.exports = router;
+
 
 
 

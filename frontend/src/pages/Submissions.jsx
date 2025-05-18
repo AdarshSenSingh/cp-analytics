@@ -20,7 +20,8 @@ const Submissions = () => {
 
   useEffect(() => {
     fetchSubmissions();
-  }, [token, filter, sort, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, sort]);
 
   const fetchSubmissions = async () => {
     try {
@@ -34,7 +35,15 @@ const Submissions = () => {
       };
       
       if (filter.status) params.status = filter.status;
-      if (filter.platform) params.platform = filter.platform;
+      
+      // Fix platform filtering for Codeforces
+      if (filter.platform) {
+        // For backend API compatibility
+        params.platform = filter.platform.toLowerCase();
+        
+        // Log the platform filter for debugging
+        console.log('Filtering by platform:', params.platform);
+      }
       
       if (filter.timeRange !== 'all') {
         const now = new Date();
@@ -64,19 +73,34 @@ const Submissions = () => {
         params.sort = 'submittedAt';
       }
       
+      console.log('Sending request with params:', params);
+      
       const response = await axios.get('/api/submissions', {
         params,
         headers: { 'x-auth-token': token }
       });
       
-      setSubmissions(response.data.submissions || response.data);
+      console.log('Response data:', response.data);
+      
+      // Ensure we're using the correct data structure from the response
+      let submissionsData = response.data;
+      if (response.data.submissions) {
+        submissionsData = response.data.submissions;
+      }
+      
+      // Log the first submission to check its structure
+      if (submissionsData.length > 0) {
+        console.log('First submission:', submissionsData[0]);
+      }
+      
+      setSubmissions(submissionsData);
       
       // Set total pages if pagination info is available
       if (response.data.totalPages) {
         setTotalPages(response.data.totalPages);
       } else {
         // Estimate total pages if not provided
-        const totalItems = response.data.length;
+        const totalItems = submissionsData.length;
         setTotalPages(Math.ceil(totalItems / itemsPerPage));
       }
       
@@ -90,7 +114,19 @@ const Submissions = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilter(prev => ({ ...prev, [name]: value }));
+    console.log(`Filter changed: ${name} = ${value}`);
+    
+    // Reset other filters when changing platform to avoid conflicts
+    if (name === 'platform') {
+      setFilter(prev => ({ 
+        ...prev, 
+        [name]: value,
+        // Keep other filters as they are
+      }));
+    } else {
+      setFilter(prev => ({ ...prev, [name]: value }));
+    }
+    
     setPage(1); // Reset to first page when filter changes
   };
 
@@ -171,8 +207,8 @@ const Submissions = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="">All Platforms</option>
-              <option value="leetcode">LeetCode</option>
               <option value="codeforces">Codeforces</option>
+              <option value="leetcode">LeetCode</option>
               <option value="hackerrank">HackerRank</option>
               <option value="atcoder">AtCoder</option>
               <option value="other">Other</option>
@@ -254,7 +290,25 @@ const Submissions = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-900 capitalize">
-                        {submission.platform || (submission.problem && submission.problem.platform) || 'Unknown'}
+                        {(() => {
+                          // Get the platform from either submission or problem
+                          const platformName = submission.platform || (submission.problem && submission.problem.platform);
+                          
+                          // List of known platforms (matching the filter dropdown options)
+                          const knownPlatforms = ['leetcode', 'codeforces', 'hackerrank', 'atcoder'];
+                          
+                          // Special case for Codeforces (capitalization)
+                          if (platformName === 'codeforces') return 'Codeforces';
+                          
+                          // Check if it's a known platform
+                          if (platformName && knownPlatforms.includes(platformName.toLowerCase())) {
+                            // Capitalize first letter
+                            return platformName.charAt(0).toUpperCase() + platformName.slice(1);
+                          }
+                          
+                          // Default to "Other" for unknown platforms
+                          return platformName ? 'Other' : 'Unknown';
+                        })()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -370,3 +424,11 @@ const Submissions = () => {
 };
 
 export default Submissions;
+
+
+
+
+
+
+
+

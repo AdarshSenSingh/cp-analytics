@@ -7,30 +7,46 @@ const Problem = require('../models/Problem');
 const User = require('../models/User');
 
 // @route   GET api/submissions
-// @desc    Get all submissions for the current user with filtering and pagination
+// @desc    Get user submissions with optional filtering
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    const populate = req.query.populate === 'problem';
+    const { 
+      status, 
+      platform, 
+      startDate, 
+      endDate, 
+      sort, 
+      page = 1, 
+      limit = 10,
+      populate
+    } = req.query;
     
-    // Build query
-    let query = { user: req.user.id };
+    // Build query object
+    const query = { user: req.user.id };
     
     // Add filters if provided
-    if (req.query.status) {
-      query.status = req.query.status;
+    if (status) query.status = status;
+    
+    // Fix platform filtering - ensure exact match
+    if (platform) {
+      console.log('Filtering by platform:', platform);
+      query.platform = platform;
+      
+      // Ensure we're doing an exact match for the platform
+      // This prevents partial matches or case sensitivity issues
+      if (platform === 'codeforces') {
+        query.platform = 'codeforces';
+      }
     }
     
-    if (req.query.platform) {
-      query.platform = req.query.platform;
+    if (startDate) query.submittedAt = { $gte: new Date(startDate) };
+    if (endDate) {
+      if (!query.submittedAt) query.submittedAt = {};
+      query.submittedAt.$lte = new Date(endDate);
     }
     
-    if (req.query.startDate) {
-      query.submittedAt = { $gte: new Date(req.query.startDate) };
-    }
+    console.log('Final query:', JSON.stringify(query));
     
     // Build the base query
     let submissionsQuery = Submission.find(query);
@@ -41,32 +57,41 @@ router.get('/', auth, async (req, res) => {
     }
     
     // Add sorting
-    const sortField = req.query.sort || '-submittedAt';
-    submissionsQuery = submissionsQuery.sort(sortField);
-    
-    // Get total count for pagination
-    const totalCount = await Submission.countDocuments(query);
-    
-    // Add pagination
-    submissionsQuery = submissionsQuery.skip(skip).limit(limit);
-    
-    const submissions = await submissionsQuery;
-    
-    // Log for debugging
-    console.log(`Found ${submissions.length} submissions for user ${req.user.id} (page ${page}, limit ${limit})`);
-    if (submissions.length > 0) {
-      console.log('Platforms represented:', [...new Set(submissions.map(s => s.platform || s.problem.platform))]);
+    if (sort) {
+      submissionsQuery = submissionsQuery.sort(sort);
+    } else {
+      submissionsQuery = submissionsQuery.sort('-submittedAt');
     }
     
-    // Return with pagination info
+    // Add pagination
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+    
+    submissionsQuery = submissionsQuery.skip(skip).limit(limitNum);
+    
+    // Execute query
+    const submissions = await submissionsQuery.exec();
+    
+    // Log the first few submissions to verify platform
+    if (submissions.length > 0) {
+      console.log(`Found ${submissions.length} submissions`);
+      console.log('First submission platform:', submissions[0].platform);
+    } else {
+      console.log('No submissions found for query');
+    }
+    
+    // Get total count for pagination
+    const total = await Submission.countDocuments(query);
+    
     res.json({
       submissions,
-      totalItems: totalCount,
-      totalPages: Math.ceil(totalCount / limit),
-      currentPage: page
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      totalSubmissions: total
     });
   } catch (err) {
-    console.error('Error fetching submissions:', err.message);
+    console.error(err.message);
     res.status(500).send('Server error');
   }
 });
@@ -214,6 +239,8 @@ router.get('/problem/:problemId', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+
 
 
 
