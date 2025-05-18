@@ -160,6 +160,24 @@ const Submissions = () => {
     ).join(' ');
   };
 
+  const renderPlatformBadge = (platform) => {
+    const platformColors = {
+      leetcode: 'bg-yellow-100 text-yellow-800',
+      codeforces: 'bg-blue-100 text-blue-800',
+      hackerrank: 'bg-green-100 text-green-800',
+      atcoder: 'bg-purple-100 text-purple-800',
+      other: 'bg-gray-100 text-gray-800'
+    };
+    
+    const color = platformColors[platform] || platformColors.other;
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+        {platform.charAt(0).toUpperCase() + platform.slice(1)}
+      </span>
+    );
+  };
+
   if (loading && submissions.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -289,27 +307,7 @@ const Submissions = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 capitalize">
-                        {(() => {
-                          // Get the platform from either submission or problem
-                          const platformName = submission.platform || (submission.problem && submission.problem.platform);
-                          
-                          // List of known platforms (matching the filter dropdown options)
-                          const knownPlatforms = ['leetcode', 'codeforces', 'hackerrank', 'atcoder'];
-                          
-                          // Special case for Codeforces (capitalization)
-                          if (platformName === 'codeforces') return 'Codeforces';
-                          
-                          // Check if it's a known platform
-                          if (platformName && knownPlatforms.includes(platformName.toLowerCase())) {
-                            // Capitalize first letter
-                            return platformName.charAt(0).toUpperCase() + platformName.slice(1);
-                          }
-                          
-                          // Default to "Other" for unknown platforms
-                          return platformName ? 'Other' : 'Unknown';
-                        })()}
-                      </span>
+                      {renderPlatformBadge(submission.platform)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(submission.status)}`}>
@@ -424,6 +422,8 @@ const Submissions = () => {
 };
 
 export default Submissions;
+
+
 
 
 

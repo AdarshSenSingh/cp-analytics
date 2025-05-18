@@ -7,6 +7,7 @@ const Problem = require('../models/Problem');
 const Submission = require('../models/Submission');
 const codeforcesService = require('../services/codeforces');
 const hackerRankService = require('../services/hackerrank');
+const leetcodeService = require('../services/leetcode');
 
 // @route   POST api/platforms/connect
 // @desc    Connect a platform account
@@ -14,6 +15,11 @@ const hackerRankService = require('../services/hackerrank');
 router.post('/connect', auth, async (req, res) => {
   try {
     const { platform, username, accessToken, refreshToken } = req.body;
+    
+    // Validate input
+    if (!platform || !username) {
+      return res.status(400).json({ msg: 'Platform and username are required' });
+    }
     
     // Validate platform
     if (!['leetcode', 'codeforces', 'hackerrank', 'atcoder', 'other'].includes(platform)) {
@@ -37,8 +43,16 @@ router.post('/connect', auth, async (req, res) => {
       }
     }
     
+    // For LeetCode, we'll skip verification entirely
+    // LeetCode doesn't provide a public API and blocks scraping attempts
+    // We'll trust the user to enter a valid username
+    
     // Find the user
     const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
     
     // Check if platform is already connected
     const platformIndex = user.platformAccounts.findIndex(acc => acc.platform === platform);
@@ -194,14 +208,96 @@ router.post('/sync/:platform', auth, async (req, res) => {
   }
 });
 
-// Helper function for LeetCode sync (placeholder)
+// Helper function for LeetCode sync
 async function syncLeetCode(platformAccount) {
-  // This would be implemented with actual API calls to LeetCode
-  // For now, return empty arrays
-  return {
-    problems: [],
-    submissions: []
-  };
+  try {
+    const username = platformAccount.username;
+    console.log(`Starting LeetCode sync for user: ${username}`);
+    
+    // Fetch user submissions from LeetCode
+    const leetcodeService = require('../services/leetcode');
+    const submissions = await leetcodeService.getUserSubmissions(username);
+    
+    console.log(`Fetched ${submissions.length} submissions from LeetCode`);
+    
+    const processedSubmissions = [];
+    const processedProblems = [];
+    const Problem = require('../models/Problem');
+    const Submission = require('../models/Submission');
+    
+    // Process each submission
+    for (const sub of submissions) {
+      try {
+        // Create a unique problem ID for LeetCode problems
+        const platformId = sub.questionId || sub.titleSlug;
+        
+        // Check if problem already exists in our database
+        let problem = await Problem.findOne({
+          platform: 'leetcode',
+          platformId
+        });
+        
+        // If problem doesn't exist, create it
+        if (!problem) {
+          console.log(`Creating new LeetCode problem: ${sub.title}`);
+          problem = new Problem({
+            platformId,
+            platform: 'leetcode',
+            title: sub.title,
+            url: `https://leetcode.com/problems/${sub.titleSlug}`,
+            difficulty: leetcodeService.mapDifficulty(sub.difficulty),
+            topics: sub.topicTags || [],
+            acceptanceRate: sub.stats?.acceptanceRate
+          });
+          
+          await problem.save();
+          processedProblems.push(problem);
+        }
+        
+        // Check if submission already exists
+        const existingSubmission = await Submission.findOne({
+          platformSubmissionId: sub.id.toString(),
+          platform: 'leetcode'
+        });
+        
+        if (!existingSubmission) {
+          console.log(`Creating new LeetCode submission for problem: ${sub.title}`);
+          // Create new submission
+          const submission = new Submission({
+            user: platformAccount.user,
+            problem: problem._id,
+            platformSubmissionId: sub.id.toString(),
+            status: sub.statusDisplay === 'Accepted' ? 'accepted' : 'rejected',
+            language: sub.language,
+            code: sub.code || '',
+            timeTaken: sub.runtime,
+            memoryUsed: sub.memory,
+            submittedAt: new Date(sub.timestamp * 1000),
+            platform: 'leetcode'  // Explicitly set platform to 'leetcode'
+          });
+          
+          await submission.save();
+          processedSubmissions.push(submission);
+        }
+      } catch (err) {
+        console.error(`Error processing LeetCode submission:`, err.message);
+        // Continue with next submission
+      }
+    }
+    
+    console.log(`LeetCode sync completed. Processed ${processedProblems.length} problems and ${processedSubmissions.length} submissions.`);
+    
+    return {
+      problems: processedProblems,
+      submissions: processedSubmissions
+    };
+  } catch (err) {
+    console.error('Error syncing LeetCode:', err.message);
+    return {
+      problems: [],
+      submissions: []
+    };
+  }
 }
 
 // Helper function for Codeforces sync
@@ -372,6 +468,19 @@ async function syncHackerRank(platformAccount) {
 }
 
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

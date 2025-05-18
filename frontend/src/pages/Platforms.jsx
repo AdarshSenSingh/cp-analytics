@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { platformsAPI } from '../services/api';
 import CodeforcesPlatformConnect from '../components/CodeforcesPlatformConnect';
 import HackerRankPlatformConnect from '../components/HackerRankPlatformConnect';
+import LeetCodePlatformConnect from '../components/LeetCodePlatformConnect';
 
 const Platforms = () => {
   const { token } = useAuth();
@@ -67,8 +68,38 @@ const Platforms = () => {
   };
 
   const renderConnectForm = () => {
-    if (!showConnect) return null;
+    console.log("Rendering connect form for platform:", connectPlatform);
     
+    if (!connectPlatform) {
+      // If no platform is selected, show the platform selection menu
+      return (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Select Platform</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => setConnectPlatform('codeforces')}
+              className="p-4 border rounded-lg hover:bg-gray-50"
+            >
+              Codeforces
+            </button>
+            <button
+              onClick={() => setConnectPlatform('hackerrank')}
+              className="p-4 border rounded-lg hover:bg-gray-50"
+            >
+              HackerRank
+            </button>
+            <button
+              onClick={() => setConnectPlatform('leetcode')}
+              className="p-4 border rounded-lg hover:bg-gray-50"
+            >
+              LeetCode
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // If a platform is selected, show the appropriate connect form
     switch(connectPlatform) {
       case 'codeforces':
         return (
@@ -84,26 +115,26 @@ const Platforms = () => {
             onError={(msg) => setError(msg)} 
           />
         );
-      default:
+      case 'leetcode':
         return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Select Platform</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => setConnectPlatform('codeforces')}
-                className="p-4 border rounded-lg hover:bg-gray-50"
-              >
-                Codeforces
-              </button>
-              <button
-                onClick={() => setConnectPlatform('hackerrank')}
-                className="p-4 border rounded-lg hover:bg-gray-50"
-              >
-                HackerRank
-              </button>
-            </div>
-          </div>
+          <LeetCodePlatformConnect 
+            onConnect={handleConnect} 
+            onError={(msg) => setError(msg)} 
+          />
         );
+      default:
+        return null;
+    }
+  };
+
+  const handleConnectButtonClick = () => {
+    setShowConnect(!showConnect);
+    if (showConnect) {
+      // If we're closing the connect form, reset the platform
+      setConnectPlatform('');
+    } else {
+      // If we're opening the connect form, default to showing the platform selection
+      setConnectPlatform('');
     }
   };
 
@@ -112,10 +143,7 @@ const Platforms = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Coding Platforms</h1>
         <button
-          onClick={() => {
-            setShowConnect(!showConnect);
-            if (!showConnect) setConnectPlatform('');
-          }}
+          onClick={handleConnectButtonClick}
           className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700"
         >
           {showConnect ? 'Cancel' : 'Connect Platform'}
@@ -208,4 +236,9 @@ const Platforms = () => {
 };
 
 export default Platforms;
+
+
+
+
+
 

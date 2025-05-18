@@ -31,13 +31,7 @@ router.get('/', auth, async (req, res) => {
     // Fix platform filtering - ensure exact match
     if (platform) {
       console.log('Filtering by platform:', platform);
-      query.platform = platform;
-      
-      // Ensure we're doing an exact match for the platform
-      // This prevents partial matches or case sensitivity issues
-      if (platform === 'codeforces') {
-        query.platform = 'codeforces';
-      }
+      query.platform = platform.toLowerCase();
     }
     
     if (startDate) query.submittedAt = { $gte: new Date(startDate) };
@@ -239,6 +233,7 @@ router.get('/problem/:problemId', auth, async (req, res) => {
 });
 
 module.exports = router;
+
 
 
 
