@@ -6,7 +6,7 @@ const Problem = require('../models/Problem');
 const User = require('../models/User');
 
 // @route   GET api/analytics/summary
-// @desc    Get summary statistics for the user
+// @desc    Get summary statistics
 // @access  Private
 router.get('/summary', auth, async (req, res) => {
   try {
@@ -14,7 +14,9 @@ router.get('/summary', auth, async (req, res) => {
     const { startDate, endDate, platform } = req.query;
     
     // Build query object
-    const query = { user: req.user.id };
+    const query = { 
+      user: req.user.id 
+    };
     
     // Add date range filter if provided
     if (startDate && endDate) {
@@ -36,7 +38,7 @@ router.get('/summary', auth, async (req, res) => {
     const acceptedSubmissions = submissions.filter(sub => sub.status === 'accepted');
     
     // Get unique solved problem IDs
-    const solvedProblemIds = [...new Set(acceptedSubmissions.map(sub => sub.problem?._id.toString()))];
+    const solvedProblemIds = [...new Set(acceptedSubmissions.map(sub => sub.problem?._id.toString()).filter(Boolean))];
     
     // Count submissions by status
     const submissionsByStatus = {};
@@ -87,90 +89,47 @@ router.get('/summary', auth, async (req, res) => {
       ? (acceptedSubmissions.length / submissions.length) * 100 
       : 0;
     
-    // If platform is Codeforces, try to get real data from Codeforces API
-    if (platform && platform.toLowerCase() === 'codeforces') {
-      // Get user's Codeforces account
-      const user = await User.findById(req.user.id);
-      const codeforcesAccount = user.platformAccounts.find(acc => acc.platform === 'codeforces');
+    // Calculate first attempt success rate and average attempts per problem
+    const problemAttempts = {};
+    const firstAttemptSuccesses = {};
+    
+    // Sort submissions by date (ascending)
+    const sortedSubmissions = [...submissions].sort((a, b) => 
+      new Date(a.submittedAt) - new Date(b.submittedAt)
+    );
+    
+    // Process submissions to count attempts per problem
+    sortedSubmissions.forEach(sub => {
+      if (!sub.problem) return;
       
-      if (codeforcesAccount && codeforcesAccount.username) {
-        // Try to get actual Codeforces stats
-        const codeforcesService = require('../services/codeforces');
+      const problemId = sub.problem._id.toString();
+      
+      if (!problemAttempts[problemId]) {
+        problemAttempts[problemId] = 0;
         
-        try {
-          // Get submissions with date filtering
-          const codeforcesSubmissions = await codeforcesService.getUserSubmissions(
-            codeforcesAccount.username, 
-            100, // Limit to last 100 submissions
-            startDate ? new Date(startDate) : null,
-            endDate ? new Date(endDate + 'T23:59:59.999Z') : null
-          );
-          
-          if (codeforcesSubmissions && codeforcesSubmissions.length > 0) {
-            // Process Codeforces submissions to get real stats
-            const cfAcceptedSubmissions = codeforcesSubmissions.filter(
-              sub => sub.verdict === 'OK'
-            );
-            
-            // Get unique solved problem IDs from Codeforces
-            const cfSolvedProblems = [...new Set(
-              cfAcceptedSubmissions.map(sub => `${sub.problem.contestId}${sub.problem.index}`)
-            )];
-            
-            // Count problems by difficulty from Codeforces
-            const cfProblemsByDifficulty = {
-              easy: 0,
-              medium: 0,
-              hard: 0
-            };
-            
-            cfAcceptedSubmissions.forEach(sub => {
-              const difficulty = codeforcesService.mapDifficulty(sub.problem.rating);
-              if (difficulty) {
-                cfProblemsByDifficulty[difficulty] += 1;
-              }
-            });
-            
-            // Count problems by topic from Codeforces
-            const cfProblemsByTopic = {};
-            cfAcceptedSubmissions.forEach(sub => {
-              if (sub.problem.tags) {
-                sub.problem.tags.forEach(tag => {
-                  if (!cfProblemsByTopic[tag]) {
-                    cfProblemsByTopic[tag] = 0;
-                  }
-                  cfProblemsByTopic[tag] += 1;
-                });
-              }
-            });
-            
-            // Calculate success rate from Codeforces
-            const cfSuccessRate = codeforcesSubmissions.length > 0 
-              ? (cfAcceptedSubmissions.length / codeforcesSubmissions.length) * 100 
-              : 0;
-            
-            // Return real Codeforces data
-            return res.json({
-              totalSubmissions: codeforcesSubmissions.length,
-              totalSolvedProblems: cfSolvedProblems.length,
-              submissionsByStatus: {
-                accepted: cfAcceptedSubmissions.length,
-                rejected: codeforcesSubmissions.length - cfAcceptedSubmissions.length
-              },
-              problemsByDifficulty: cfProblemsByDifficulty,
-              problemsByPlatform: { codeforces: cfSolvedProblems.length },
-              problemsByTopic: cfProblemsByTopic,
-              successRate: cfSuccessRate
-            });
-          }
-        } catch (cfErr) {
-          console.error('Error fetching Codeforces data:', cfErr);
-          // Continue with local data if Codeforces API fails
+        // If first attempt is successful
+        if (sub.status === 'accepted') {
+          firstAttemptSuccesses[problemId] = true;
         }
       }
-    }
+      
+      problemAttempts[problemId]++;
+    });
     
-    // Return local data if we couldn't get real Codeforces data
+    // Calculate first attempt success rate
+    const totalProblemsAttempted = Object.keys(problemAttempts).length;
+    const firstAttemptSuccessCount = Object.keys(firstAttemptSuccesses).length;
+    const firstAttemptSuccessRate = totalProblemsAttempted > 0 
+      ? (firstAttemptSuccessCount / totalProblemsAttempted) * 100 
+      : 0;
+    
+    // Calculate average attempts per problem
+    const totalAttempts = Object.values(problemAttempts).reduce((sum, count) => sum + count, 0);
+    const averageAttemptsPerProblem = totalProblemsAttempted > 0 
+      ? totalAttempts / totalProblemsAttempted 
+      : 0;
+    
+    // Return the data
     res.json({
       totalSubmissions: submissions.length,
       totalSolvedProblems: solvedProblemIds.length,
@@ -178,7 +137,9 @@ router.get('/summary', auth, async (req, res) => {
       problemsByDifficulty,
       problemsByPlatform,
       problemsByTopic,
-      successRate
+      successRate: parseFloat(successRate.toFixed(2)),
+      firstAttemptSuccessRate: parseFloat(firstAttemptSuccessRate.toFixed(2)),
+      averageAttemptsPerProblem: parseFloat(averageAttemptsPerProblem.toFixed(2))
     });
   } catch (err) {
     console.error(err.message);
@@ -460,6 +421,93 @@ router.get('/topics-mistakes', auth, async (req, res) => {
     problemsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
     
     res.json(problemsMistakesAnalysis);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET api/analytics/ratings
+// @desc    Get problems solved by rating
+// @access  Private
+router.get('/ratings', auth, async (req, res) => {
+  try {
+    // Extract query parameters
+    const { startDate, endDate, platform } = req.query;
+    
+    // Build query object
+    const query = { 
+      user: req.user.id,
+      status: 'accepted'
+    };
+    
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.submittedAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+    
+    // Add platform filter if provided
+    if (platform) {
+      query.platform = platform.toLowerCase();
+    }
+    
+    // Get all accepted submissions by the user with filters
+    const acceptedSubmissions = await Submission.find(query).populate('problem');
+    
+    // Get unique solved problems
+    const uniqueProblems = {};
+    acceptedSubmissions.forEach(sub => {
+      if (sub.problem) {
+        uniqueProblems[sub.problem._id.toString()] = sub.problem;
+      }
+    });
+    
+    // Count problems by rating
+    const ratingRanges = {
+      '800-1000': 0,
+      '1000-1200': 0,
+      '1200-1400': 0,
+      '1400-1600': 0,
+      '1600-1800': 0,
+      '1800-2000': 0,
+      '2000-2200': 0,
+      '2200-2400': 0,
+      '2400-2600': 0,
+      '2600-2800': 0,
+      '2800-3000': 0,
+      '3000-3200': 0,
+      '3200-3500': 0,
+      'unknown': 0
+    };
+    
+    Object.values(uniqueProblems).forEach(problem => {
+      if (!problem.rating) {
+        ratingRanges.unknown += 1;
+        return;
+      }
+      
+      const rating = parseInt(problem.rating);
+      
+      if (rating >= 800 && rating < 1000) ratingRanges['800-1000'] += 1;
+      else if (rating >= 1000 && rating < 1200) ratingRanges['1000-1200'] += 1;
+      else if (rating >= 1200 && rating < 1400) ratingRanges['1200-1400'] += 1;
+      else if (rating >= 1400 && rating < 1600) ratingRanges['1400-1600'] += 1;
+      else if (rating >= 1600 && rating < 1800) ratingRanges['1600-1800'] += 1;
+      else if (rating >= 1800 && rating < 2000) ratingRanges['1800-2000'] += 1;
+      else if (rating >= 2000 && rating < 2200) ratingRanges['2000-2200'] += 1;
+      else if (rating >= 2200 && rating < 2400) ratingRanges['2200-2400'] += 1;
+      else if (rating >= 2400 && rating < 2600) ratingRanges['2400-2600'] += 1;
+      else if (rating >= 2600 && rating < 2800) ratingRanges['2600-2800'] += 1;
+      else if (rating >= 2800 && rating < 3000) ratingRanges['2800-3000'] += 1;
+      else if (rating >= 3000 && rating < 3200) ratingRanges['3000-3200'] += 1;
+      else if (rating >= 3200 && rating <= 3500) ratingRanges['3200-3500'] += 1;
+      else ratingRanges.unknown += 1;
+    });
+    
+    res.json(ratingRanges);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

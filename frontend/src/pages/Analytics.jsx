@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { analyticsAPI, platformsAPI, problemsAPI } from '../services/api';
+import axios from 'axios';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -13,67 +14,65 @@ const Analytics = () => {
   const [topicsData, setTopicsData] = useState([]);
   const [activityData, setActivityData] = useState([]);
   const [topicsMistakesData, setTopicsMistakesData] = useState([]);
+  const [ratingsData, setRatingsData] = useState({});
   const [platformAccounts, setPlatformAccounts] = useState([]);
   const [selectedPlatform, setSelectedPlatform] = useState('codeforces');
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
     endDate: new Date().toISOString().split('T')[0]
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [problemNotes, setProblemNotes] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Add missing state variables for notes functionality
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteText, setNoteText] = useState('');
+  const [problemNotes, setProblemNotes] = useState({});
   const [viewingNote, setViewingNote] = useState(null);
   const [viewingProblem, setViewingProblem] = useState(null);
-
+  
+  // Add missing handler functions
+  const handleEditNote = (problemId, initialText) => {
+    setEditingNoteId(problemId);
+    setNoteText(initialText);
+  };
+  
   const handleSaveNote = async (problemId) => {
     try {
-      const response = await problemsAPI.updateNotes(problemId, noteText);
-      
-      setProblemNotes({
-        ...problemNotes,
-        [problemId]: response.data.notes
+      const response = await axios.put(`/api/problems/${problemId}/notes`, {
+        notes: noteText
+      }, {
+        headers: { 'x-auth-token': token }
       });
+      
+      setProblemNotes(prev => ({
+        ...prev,
+        [problemId]: response.data.notes
+      }));
       
       setEditingNoteId(null);
     } catch (err) {
       console.error('Error saving note:', err);
     }
   };
-
-  const handleEditNote = (problemId, currentNote) => {
-    setEditingNoteId(problemId);
-    setNoteText(currentNote || '');
-  };
-
-  const loadProblemNotes = async (problems) => {
-    const notesObj = {};
-    
-    for (const problem of problems) {
-      try {
-        const response = await problemsAPI.getNotes(problem.id);
-        notesObj[problem.id] = response.data.notes;
-      } catch (err) {
-        console.error(`Error loading notes for problem ${problem.id}:`, err);
-      }
-    }
-    
-    setProblemNotes(notesObj);
-  };
-
+  
   const handleViewNote = (problem, note) => {
     setViewingProblem(problem);
     setViewingNote(note);
   };
-
+  
   const handleDeleteNote = async (problemId) => {
     try {
-      await problemsAPI.updateNotes(problemId, '');
+      await axios.put(`/api/problems/${problemId}/notes`, {
+        notes: ''
+      }, {
+        headers: { 'x-auth-token': token }
+      });
       
-      setProblemNotes({
-        ...problemNotes,
-        [problemId]: ''
+      setProblemNotes(prev => {
+        const updated = { ...prev };
+        delete updated[problemId];
+        return updated;
       });
       
       setViewingNote(null);
@@ -83,80 +82,94 @@ const Analytics = () => {
     }
   };
 
+  // Fetch data when component mounts or filters change
   useEffect(() => {
-    const fetchPlatformAccounts = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null); // Reset error state
       try {
-        const response = await platformsAPI.getAccounts();
-        setPlatformAccounts(response.data.platformAccounts || []);
+        // Fetch platform accounts
+        const accountsResponse = await platformsAPI.getAccounts();
+        setPlatformAccounts(accountsResponse.data.platformAccounts || []);
         
-        // Set default platform to Codeforces if available
-        const codeforcesAccount = response.data.platformAccounts?.find(acc => 
-          acc.platform.toLowerCase() === 'codeforces'
-        );
+        // Prepare query params
+        const params = new URLSearchParams();
+        if (dateRange.startDate) params.append('startDate', dateRange.startDate);
+        if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+        if (selectedPlatform) params.append('platform', selectedPlatform);
         
-        if (codeforcesAccount) {
-          setSelectedPlatform('codeforces');
-        }
-      } catch (err) {
-        console.error('Error fetching platform accounts:', err);
-      }
-    };
-    
-    fetchPlatformAccounts();
-  }, [token]);
-
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Build query parameters
-        const params = {};
-        
-        if (selectedPlatform) {
-          params.platform = selectedPlatform;
-        }
-        
-        if (dateRange.startDate && dateRange.endDate) {
-          params.startDate = dateRange.startDate;
-          params.endDate = dateRange.endDate;
-        }
-        
-        // Fetch summary data
-        const summaryResponse = await analyticsAPI.getSummary(params);
+        // Use axios directly instead of analyticsAPI
+        const summaryResponse = await axios.get(`/api/analytics/summary`, {
+          headers: { 'x-auth-token': token },
+          params
+        });
         setSummaryData(summaryResponse.data);
         
-        // Fetch topics data
-        const topicsResponse = await analyticsAPI.getTopicsAnalysis(params);
+        const topicsResponse = await axios.get(`/api/analytics/topics`, {
+          headers: { 'x-auth-token': token },
+          params
+        });
         setTopicsData(topicsResponse.data);
         
-        // Fetch activity data
-        const activityResponse = await analyticsAPI.getActivity(params);
+        const activityResponse = await axios.get(`/api/analytics/activity`, {
+          headers: { 'x-auth-token': token },
+          params
+        });
         setActivityData(activityResponse.data);
         
-        // Fetch topics mistakes data
-        const topicsMistakesResponse = await analyticsAPI.getTopicsMistakes(params);
-        setTopicsMistakesData(topicsMistakesResponse.data);
+        const mistakesResponse = await axios.get(`/api/analytics/topics-mistakes`, {
+          headers: { 'x-auth-token': token },
+          params
+        });
+        setTopicsMistakesData(mistakesResponse.data);
         
+        const ratingsResponse = await axios.get(`/api/analytics/ratings`, {
+          headers: { 'x-auth-token': token },
+          params
+        });
+        setRatingsData(ratingsResponse.data);
+        
+        console.log('Ratings data:', ratingsResponse.data);
       } catch (err) {
         console.error('Error fetching analytics data:', err);
-        setError('Failed to load analytics data');
+        setError('Failed to load analytics data. Please try again later.');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     
-    if (selectedPlatform) {
-      fetchAnalyticsData();
-    }
-  }, [token, selectedPlatform, dateRange]);
+    fetchData();
+  }, [token, dateRange, selectedPlatform]);
 
   useEffect(() => {
     if (topicsMistakesData.length > 0) {
       loadProblemNotes(topicsMistakesData);
     }
   }, [topicsMistakesData]);
+
+  const loadProblemNotes = async (problems) => {
+    try {
+      const notes = {};
+      
+      for (const problem of problems) {
+        try {
+          const response = await axios.get(`/api/problems/${problem.id}/notes`, {
+            headers: { 'x-auth-token': token }
+          });
+          
+          if (response.data.notes) {
+            notes[problem.id] = response.data.notes;
+          }
+        } catch (err) {
+          console.error(`Error loading notes for problem ${problem.id}:`, err);
+        }
+      }
+      
+      setProblemNotes(notes);
+    } catch (err) {
+      console.error('Error loading problem notes:', err);
+    }
+  };
 
   // Prepare data for difficulty distribution pie chart
   const difficultyChartData = {
@@ -204,6 +217,28 @@ const Analytics = () => {
     ],
   };
 
+  // Prepare data for ratings bar chart
+  const ratingsChartData = {
+    labels: Object.keys(ratingsData || {}).filter(key => key !== 'unknown'),
+    datasets: [
+      {
+        label: 'Problems Solved',
+        data: Object.entries(ratingsData || {})
+          .filter(([key]) => key !== 'unknown')
+          .map(([_, value]) => value),
+        backgroundColor: '#60a5fa',
+      },
+    ],
+  };
+
+  // Find the maximum value for y-axis scaling
+  const maxRatingValue = Math.max(
+    1, // Minimum of 1 to avoid empty charts
+    ...Object.entries(ratingsData || {})
+      .filter(([key]) => key !== 'unknown')
+      .map(([_, value]) => value)
+  );
+
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     setDateRange(prev => ({
@@ -216,7 +251,7 @@ const Analytics = () => {
     setSelectedPlatform(e.target.value);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -311,15 +346,19 @@ const Analytics = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Accepted Submissions</h3>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">{summaryData?.submissionsByStatus?.accepted || 0}</p>
+          <h3 className="text-sm font-medium text-gray-500">First Attempt Success Rate</h3>
+          <p className="mt-2 text-3xl font-semibold text-gray-900">
+            {summaryData?.firstAttemptSuccessRate ? `${summaryData.firstAttemptSuccessRate}%` : '0%'}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">Problems solved on first try</p>
         </div>
         
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Success Rate</h3>
+          <h3 className="text-sm font-medium text-gray-500">Avg Attempts per Problem</h3>
           <p className="mt-2 text-3xl font-semibold text-gray-900">
-            {summaryData?.successRate ? summaryData.successRate.toFixed(1) : 0}%
+            {summaryData?.averageAttemptsPerProblem || '0'}
           </p>
+          <p className="mt-1 text-xs text-gray-500">Submissions needed to solve</p>
         </div>
       </div>
       
@@ -601,6 +640,58 @@ const Analytics = () => {
                     title: {
                       display: true,
                       text: 'Date'
+                    }
+                  }
+                }
+              }} 
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Problem Ratings Breakdown */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-900">Problem Ratings Breakdown</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Distribution of solved problems by difficulty rating
+            {ratingsData && ratingsData.unknown > 0 && 
+              ` (Additionally, ${ratingsData.unknown} problems with unknown rating)`
+            }
+          </p>
+        </div>
+        <div className="p-6">
+          <div className="h-80">
+            <Bar 
+              data={ratingsChartData} 
+              options={{
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      precision: 0, // Force integer ticks
+                      stepSize: 1,  // Minimum step size of 1
+                    },
+                    suggestedMax: Math.ceil(maxRatingValue * 1.1), // Add 10% padding to the max value
+                    title: {
+                      display: true,
+                      text: 'Problems Solved'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Problem Rating'
+                    }
+                  }
+                },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        return `Problems Solved: ${context.raw}`;
+                      }
                     }
                   }
                 }

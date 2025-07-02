@@ -193,27 +193,25 @@ async function syncCodeforces(platformAccount) {
     // Process each submission
     for (const sub of submissions) {
       try {
-        // Skip submissions without problem data
+        // Skip if problem info is missing
         if (!sub.problem || !sub.problem.contestId || !sub.problem.index) {
-          console.log('Skipping submission with incomplete problem data:', sub.id);
           continue;
         }
         
-        // Create a unique problem ID for Codeforces problems
+        // Create a unique platform ID for the problem
         const platformId = `${sub.problem.contestId}${sub.problem.index}`;
-        console.log(`Processing submission ${sub.id} for problem ${platformId}`);
         
-        // Check if problem already exists in our database
+        // Check if problem already exists
         let problem = await Problem.findOne({
-          platform: 'codeforces',
-          platformId
+          platformId,
+          platform: 'codeforces'
         });
         
         // If problem doesn't exist, create it
         if (!problem) {
           console.log(`Creating new problem: ${platformId}`);
           // Map Codeforces tags to our topics
-          const topics = sub.problem.tags || [];
+          const topics = sub.problem.tags ? sub.problem.tags.filter(tag => !tag.startsWith('*')) : [];
           
           problem = new Problem({
             platformId,
@@ -221,6 +219,7 @@ async function syncCodeforces(platformAccount) {
             title: sub.problem.name,
             url: `https://codeforces.com/problemset/problem/${sub.problem.contestId}/${sub.problem.index}`,
             difficulty: codeforcesService.mapDifficulty(sub.problem.rating),
+            rating: sub.problem.rating || null, // Save the actual rating value
             topics,
             acceptanceRate: null, // Codeforces doesn't provide this directly
             timeLimit: sub.problem.timeLimit,
@@ -229,6 +228,11 @@ async function syncCodeforces(platformAccount) {
           
           await problem.save();
           processedProblems.push(problem);
+        } else if (!problem.rating && sub.problem.rating) {
+          // Update existing problem with rating if it doesn't have one
+          problem.rating = sub.problem.rating;
+          problem.difficulty = codeforcesService.mapDifficulty(sub.problem.rating);
+          await problem.save();
         }
         
         // Check if submission already exists

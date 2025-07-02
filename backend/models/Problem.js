@@ -23,6 +23,9 @@ const ProblemSchema = new mongoose.Schema({
     enum: ['easy', 'medium', 'hard', 'unknown'],
     default: 'unknown'
   },
+  rating: {
+    type: Number
+  },
   topics: [{
     type: String
   }],

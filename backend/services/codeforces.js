@@ -36,8 +36,25 @@ async function getUserSubmissions(username, count = 100, startDate = null, endDa
     
     console.log(`Successfully fetched ${response.data.result.length} submissions from Codeforces`);
     
+    // Process submissions to extract ratings from tags if not present
+    const processedSubmissions = response.data.result.map(sub => {
+      // If problem doesn't have rating but has tags, try to extract rating from tags
+      if (sub.problem && !sub.problem.rating && Array.isArray(sub.problem.tags)) {
+        // Look for a tag that starts with * followed by a number (e.g., *1700)
+        const ratingTag = sub.problem.tags.find(tag => /^\*\d+$/.test(tag));
+        if (ratingTag) {
+          // Extract the number part and convert to integer
+          const rating = parseInt(ratingTag.substring(1));
+          if (!isNaN(rating)) {
+            sub.problem.rating = rating;
+          }
+        }
+      }
+      return sub;
+    });
+    
     // Apply date filtering if provided
-    let filteredSubmissions = response.data.result;
+    let filteredSubmissions = processedSubmissions;
     
     if (startDate || endDate) {
       filteredSubmissions = filteredSubmissions.filter(sub => {
