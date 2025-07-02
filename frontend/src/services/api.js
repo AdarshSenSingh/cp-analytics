@@ -64,10 +64,11 @@ export const submissionsAPI = {
 
 // Analytics API
 export const analyticsAPI = {
-  getSummary: () => api.get('/analytics/summary'),
-  getActivity: () => api.get('/analytics/activity'),
-  getTopicsAnalysis: () => api.get('/analytics/topics'),
-  getRecommendations: () => api.get('/analytics/recommendations')
+  getSummary: (params) => api.get('/analytics/summary', { params }),
+  getActivity: (params) => api.get('/analytics/activity', { params }),
+  getTopicsAnalysis: (params) => api.get('/analytics/topics', { params }),
+  getTopicsMistakes: (params) => api.get('/analytics/topics-mistakes', { params }),
+  getRecommendations: (params) => api.get('/analytics/recommendations', { params })
 };
 
 // Platforms API

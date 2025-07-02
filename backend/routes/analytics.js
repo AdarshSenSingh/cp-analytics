@@ -10,40 +10,74 @@ const User = require('../models/User');
 // @access  Private
 router.get('/summary', auth, async (req, res) => {
   try {
-    // Get all submissions by the user
-    const submissions = await Submission.find({ user: req.user.id });
+    // Extract query parameters
+    const { startDate, endDate, platform } = req.query;
+    
+    // Build query object
+    const query = { user: req.user.id };
+    
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.submittedAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+    
+    // Add platform filter if provided
+    if (platform) {
+      query.platform = platform.toLowerCase();
+    }
+    
+    // Get all submissions by the user with filters
+    const submissions = await Submission.find(query).populate('problem');
     
     // Get all accepted submissions
     const acceptedSubmissions = submissions.filter(sub => sub.status === 'accepted');
     
-    // Get unique solved problems
-    const solvedProblemIds = [...new Set(acceptedSubmissions.map(sub => sub.problem.toString()))];
+    // Get unique solved problem IDs
+    const solvedProblemIds = [...new Set(acceptedSubmissions.map(sub => sub.problem?._id.toString()))];
     
     // Count submissions by status
-    const submissionsByStatus = submissions.reduce((acc, sub) => {
-      acc[sub.status] = (acc[sub.status] || 0) + 1;
-      return acc;
-    }, {});
+    const submissionsByStatus = {};
+    submissions.forEach(sub => {
+      if (!submissionsByStatus[sub.status]) {
+        submissionsByStatus[sub.status] = 0;
+      }
+      submissionsByStatus[sub.status] += 1;
+    });
     
     // Count problems by difficulty
-    const problems = await Problem.find({ _id: { $in: solvedProblemIds } });
-    const problemsByDifficulty = problems.reduce((acc, prob) => {
-      acc[prob.difficulty] = (acc[prob.difficulty] || 0) + 1;
-      return acc;
-    }, {});
+    const problemsByDifficulty = {};
+    acceptedSubmissions.forEach(sub => {
+      if (sub.problem && sub.problem.difficulty) {
+        if (!problemsByDifficulty[sub.problem.difficulty]) {
+          problemsByDifficulty[sub.problem.difficulty] = 0;
+        }
+        problemsByDifficulty[sub.problem.difficulty] += 1;
+      }
+    });
     
     // Count problems by platform
-    const problemsByPlatform = problems.reduce((acc, prob) => {
-      acc[prob.platform] = (acc[prob.platform] || 0) + 1;
-      return acc;
-    }, {});
+    const problemsByPlatform = {};
+    acceptedSubmissions.forEach(sub => {
+      if (sub.platform) {
+        if (!problemsByPlatform[sub.platform]) {
+          problemsByPlatform[sub.platform] = 0;
+        }
+        problemsByPlatform[sub.platform] += 1;
+      }
+    });
     
     // Count problems by topic
     const problemsByTopic = {};
-    problems.forEach(prob => {
-      if (prob.topics && prob.topics.length > 0) {
-        prob.topics.forEach(topic => {
-          problemsByTopic[topic] = (problemsByTopic[topic] || 0) + 1;
+    acceptedSubmissions.forEach(sub => {
+      if (sub.problem && sub.problem.topics) {
+        sub.problem.topics.forEach(topic => {
+          if (!problemsByTopic[topic]) {
+            problemsByTopic[topic] = 0;
+          }
+          problemsByTopic[topic] += 1;
         });
       }
     });
@@ -53,58 +87,90 @@ router.get('/summary', auth, async (req, res) => {
       ? (acceptedSubmissions.length / submissions.length) * 100 
       : 0;
     
-    // Get user's platform accounts to check for actual stats
-    const user = await User.findById(req.user.id);
-    const platformAccounts = user.platformAccounts || [];
-    
-    // Check if we have LeetCode account with stats
-    const leetcodeAccount = platformAccounts.find(acc => acc.platform === 'leetcode');
-    if (leetcodeAccount && leetcodeAccount.username) {
-      // Try to get actual LeetCode stats
-      const leetcodeService = require('../services/leetcode');
-      const leetcodeStats = await leetcodeService.getUserStats(leetcodeAccount.username);
+    // If platform is Codeforces, try to get real data from Codeforces API
+    if (platform && platform.toLowerCase() === 'codeforces') {
+      // Get user's Codeforces account
+      const user = await User.findById(req.user.id);
+      const codeforcesAccount = user.platformAccounts.find(acc => acc.platform === 'codeforces');
       
-      if (leetcodeStats) {
-        // Update platform stats with actual data
-        problemsByPlatform['leetcode'] = leetcodeStats.totalSolved;
+      if (codeforcesAccount && codeforcesAccount.username) {
+        // Try to get actual Codeforces stats
+        const codeforcesService = require('../services/codeforces');
         
-        // Update difficulty stats if we don't have much data
-        if (Object.keys(problemsByDifficulty).length === 0 || 
-            (problemsByDifficulty.easy || 0) + 
-            (problemsByDifficulty.medium || 0) + 
-            (problemsByDifficulty.hard || 0) < 10) {
+        try {
+          // Get submissions with date filtering
+          const codeforcesSubmissions = await codeforcesService.getUserSubmissions(
+            codeforcesAccount.username, 
+            100, // Limit to last 100 submissions
+            startDate ? new Date(startDate) : null,
+            endDate ? new Date(endDate + 'T23:59:59.999Z') : null
+          );
           
-          problemsByDifficulty.easy = (problemsByDifficulty.easy || 0) + leetcodeStats.easySolved;
-          problemsByDifficulty.medium = (problemsByDifficulty.medium || 0) + leetcodeStats.mediumSolved;
-          problemsByDifficulty.hard = (problemsByDifficulty.hard || 0) + leetcodeStats.hardSolved;
+          if (codeforcesSubmissions && codeforcesSubmissions.length > 0) {
+            // Process Codeforces submissions to get real stats
+            const cfAcceptedSubmissions = codeforcesSubmissions.filter(
+              sub => sub.verdict === 'OK'
+            );
+            
+            // Get unique solved problem IDs from Codeforces
+            const cfSolvedProblems = [...new Set(
+              cfAcceptedSubmissions.map(sub => `${sub.problem.contestId}${sub.problem.index}`)
+            )];
+            
+            // Count problems by difficulty from Codeforces
+            const cfProblemsByDifficulty = {
+              easy: 0,
+              medium: 0,
+              hard: 0
+            };
+            
+            cfAcceptedSubmissions.forEach(sub => {
+              const difficulty = codeforcesService.mapDifficulty(sub.problem.rating);
+              if (difficulty) {
+                cfProblemsByDifficulty[difficulty] += 1;
+              }
+            });
+            
+            // Count problems by topic from Codeforces
+            const cfProblemsByTopic = {};
+            cfAcceptedSubmissions.forEach(sub => {
+              if (sub.problem.tags) {
+                sub.problem.tags.forEach(tag => {
+                  if (!cfProblemsByTopic[tag]) {
+                    cfProblemsByTopic[tag] = 0;
+                  }
+                  cfProblemsByTopic[tag] += 1;
+                });
+              }
+            });
+            
+            // Calculate success rate from Codeforces
+            const cfSuccessRate = codeforcesSubmissions.length > 0 
+              ? (cfAcceptedSubmissions.length / codeforcesSubmissions.length) * 100 
+              : 0;
+            
+            // Return real Codeforces data
+            return res.json({
+              totalSubmissions: codeforcesSubmissions.length,
+              totalSolvedProblems: cfSolvedProblems.length,
+              submissionsByStatus: {
+                accepted: cfAcceptedSubmissions.length,
+                rejected: codeforcesSubmissions.length - cfAcceptedSubmissions.length
+              },
+              problemsByDifficulty: cfProblemsByDifficulty,
+              problemsByPlatform: { codeforces: cfSolvedProblems.length },
+              problemsByTopic: cfProblemsByTopic,
+              successRate: cfSuccessRate
+            });
+          }
+        } catch (cfErr) {
+          console.error('Error fetching Codeforces data:', cfErr);
+          // Continue with local data if Codeforces API fails
         }
-        
-        // Update submission stats
-        submissionsByStatus.accepted = (submissionsByStatus.accepted || 0) + leetcodeStats.totalSolved;
-        const totalLeetcodeSubmissions = leetcodeStats.totalSubmissions || 
-                                        Math.round(leetcodeStats.totalSolved / (leetcodeStats.acceptanceRate / 100));
-        
-        // Update total submissions count
-        const totalSubmissions = submissions.length + totalLeetcodeSubmissions;
-        
-        // Recalculate success rate
-        const totalAccepted = (acceptedSubmissions.length || 0) + leetcodeStats.totalSolved;
-        const newSuccessRate = totalSubmissions > 0 ? (totalAccepted / totalSubmissions) * 100 : 0;
-        
-        res.json({
-          totalSubmissions: totalSubmissions,
-          totalSolvedProblems: solvedProblemIds.length + leetcodeStats.totalSolved,
-          submissionsByStatus,
-          problemsByDifficulty,
-          problemsByPlatform,
-          problemsByTopic,
-          successRate: newSuccessRate
-        });
-        return;
       }
     }
     
-    // If we don't have LeetCode stats, return the original data
+    // Return local data if we couldn't get real Codeforces data
     res.json({
       totalSubmissions: submissions.length,
       totalSolvedProblems: solvedProblemIds.length,
@@ -125,8 +191,27 @@ router.get('/summary', auth, async (req, res) => {
 // @access  Private
 router.get('/activity', auth, async (req, res) => {
   try {
-    // Get all submissions by the user
-    const submissions = await Submission.find({ user: req.user.id })
+    // Extract query parameters
+    const { startDate, endDate, platform } = req.query;
+    
+    // Build query object
+    const query = { user: req.user.id };
+    
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.submittedAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+    
+    // Add platform filter if provided
+    if (platform) {
+      query.platform = platform.toLowerCase();
+    }
+    
+    // Get all submissions by the user with filters
+    const submissions = await Submission.find(query)
       .select('submittedAt status')
       .sort({ submittedAt: 1 });
     
@@ -161,42 +246,95 @@ router.get('/activity', auth, async (req, res) => {
 });
 
 // @route   GET api/analytics/topics
-// @desc    Get topic mastery analysis
+// @desc    Get topic mastery analysis (only perfect submissions)
 // @access  Private
 router.get('/topics', auth, async (req, res) => {
   try {
-    // Get all accepted submissions by the user
-    const acceptedSubmissions = await Submission.find({
+    // Extract query parameters
+    const { startDate, endDate, platform } = req.query;
+    
+    // Build query object
+    const query = { 
       user: req.user.id,
       status: 'accepted'
-    }).populate('problem');
+    };
     
-    // Get all topics from solved problems
-    const topicData = {};
-    acceptedSubmissions.forEach(sub => {
-      const problem = sub.problem;
-      problem.topics.forEach(topic => {
-        if (!topicData[topic]) {
-          topicData[topic] = {
-            count: 0,
-            difficulties: {
-              easy: 0,
-              medium: 0,
-              hard: 0,
-              unknown: 0
-            },
-            lastSolved: null
-          };
-        }
-        topicData[topic].count += 1;
-        topicData[topic].difficulties[problem.difficulty] += 1;
-        
-        // Update last solved date if newer
-        const submittedAt = new Date(sub.submittedAt);
-        if (!topicData[topic].lastSolved || submittedAt > new Date(topicData[topic].lastSolved)) {
-          topicData[topic].lastSolved = sub.submittedAt;
-        }
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.submittedAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+    
+    // Add platform filter if provided
+    if (platform) {
+      query.platform = platform.toLowerCase();
+    }
+    
+    // Get all accepted submissions by the user with filters
+    const acceptedSubmissions = await Submission.find(query).populate('problem');
+    
+    // Get all problems
+    const problemIds = acceptedSubmissions.map(sub => sub.problem?._id.toString());
+    
+    // Find problems with no failed submissions (perfect solves)
+    const perfectProblems = [];
+    
+    for (const problemId of [...new Set(problemIds)]) {
+      if (!problemId) continue;
+      
+      // Count failed submissions for this problem
+      const failedCount = await Submission.countDocuments({
+        user: req.user.id,
+        problem: problemId,
+        status: { $ne: 'accepted' }
       });
+      
+      // If no failed submissions, add to perfect problems
+      if (failedCount === 0) {
+        const submission = acceptedSubmissions.find(sub => 
+          sub.problem && sub.problem._id.toString() === problemId
+        );
+        
+        if (submission) {
+          perfectProblems.push(submission);
+        }
+      }
+    }
+    
+    // Get all topics from perfectly solved problems
+    const topicData = {};
+    perfectProblems.forEach(sub => {
+      const problem = sub.problem;
+      if (problem && problem.topics) {
+        problem.topics.forEach(topic => {
+          if (!topicData[topic]) {
+            topicData[topic] = {
+              count: 0,
+              difficulties: {
+                easy: 0,
+                medium: 0,
+                hard: 0,
+                unknown: 0
+              },
+              lastSolved: null
+            };
+          }
+          topicData[topic].count += 1;
+          if (problem.difficulty) {
+            topicData[topic].difficulties[problem.difficulty] += 1;
+          } else {
+            topicData[topic].difficulties.unknown += 1;
+          }
+          
+          // Update last solved date if newer
+          const submittedAt = new Date(sub.submittedAt);
+          if (!topicData[topic].lastSolved || submittedAt > new Date(topicData[topic].lastSolved)) {
+            topicData[topic].lastSolved = sub.submittedAt;
+          }
+        });
+      }
     });
     
     // Convert to array format for easier consumption by frontend
@@ -256,6 +394,122 @@ router.get('/recommendations', auth, async (req, res) => {
       .sort({ acceptanceRate: -1 });
     
     res.json(recommendations);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET api/analytics/topics-mistakes
+// @desc    Get topics with most mistakes in decreasing order
+// @access  Private
+router.get('/topics-mistakes', auth, async (req, res) => {
+  try {
+    // Extract query parameters
+    const { startDate, endDate, platform } = req.query;
+    
+    // Build query object for failed submissions
+    const query = { 
+      user: req.user.id,
+      status: { $ne: 'accepted' } // Only get non-accepted submissions
+    };
+    
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.submittedAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+    
+    // Add platform filter if provided
+    if (platform) {
+      query.platform = platform.toLowerCase();
+    }
+    
+    // Get all failed submissions by the user with filters
+    const failedSubmissions = await Submission.find(query).populate('problem');
+    
+    // Count mistakes by topic
+    const topicMistakes = {};
+    const problemsByTopic = {};
+    
+    failedSubmissions.forEach(sub => {
+      const problem = sub.problem;
+      if (problem && problem.topics) {
+        problem.topics.forEach(topic => {
+          if (!topicMistakes[topic]) {
+            topicMistakes[topic] = 0;
+            problemsByTopic[topic] = [];
+          }
+          
+          topicMistakes[topic] += 1;
+          
+          // Add problem to the list if not already there
+          const problemExists = problemsByTopic[topic].some(p => 
+            p.id === problem._id.toString()
+          );
+          
+          if (!problemExists) {
+            problemsByTopic[topic].push({
+              id: problem._id.toString(),
+              title: problem.title,
+              url: problem.url,
+              difficulty: problem.difficulty
+            });
+          }
+        });
+      }
+    });
+    
+    // Convert to array format for easier consumption by frontend
+    const topicsMistakesAnalysis = Object.keys(topicMistakes).map(topic => ({
+      topic,
+      mistakeCount: topicMistakes[topic],
+      problems: problemsByTopic[topic].slice(0, 3) // Limit to 3 problems per topic
+    }));
+    
+    // Sort by mistake count (descending)
+    topicsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
+    
+    // Add learning resources for each topic
+    const topicResources = {
+      'dynamic programming': [
+        { name: 'DP Tutorial', url: 'https://codeforces.com/blog/entry/67679' },
+        { name: 'Algorithms Live', url: 'https://www.youtube.com/watch?v=YBSt1jYwVfU' }
+      ],
+      'graphs': [
+        { name: 'Graph Algorithms', url: 'https://codeforces.com/blog/entry/16221' },
+        { name: 'CP Algorithms', url: 'https://cp-algorithms.com/graph/breadth-first-search.html' }
+      ],
+      'binary search': [
+        { name: 'Binary Search Tutorial', url: 'https://codeforces.com/blog/entry/9901' },
+        { name: 'Topcoder Tutorial', url: 'https://www.topcoder.com/thrive/articles/Binary%20Search' }
+      ],
+      'data structures': [
+        { name: 'DS Handbook', url: 'https://codeforces.com/blog/entry/15729' },
+        { name: 'Competitive Programming', url: 'https://cp-algorithms.com/data_structures/segment_tree.html' }
+      ],
+      'greedy': [
+        { name: 'Greedy Algorithms', url: 'https://codeforces.com/blog/entry/63533' },
+        { name: 'Greedy Techniques', url: 'https://www.hackerearth.com/practice/algorithms/greedy/basics-of-greedy-algorithms/tutorial/' }
+      ]
+    };
+    
+    // Add resources to each topic
+    topicsMistakesAnalysis.forEach(topic => {
+      const normalizedTopic = topic.topic.toLowerCase();
+      // Find the closest matching topic
+      const resourceKey = Object.keys(topicResources).find(key => 
+        normalizedTopic.includes(key) || key.includes(normalizedTopic)
+      );
+      
+      topic.resources = resourceKey ? 
+        topicResources[resourceKey] : 
+        [{ name: 'General CP Resources', url: 'https://codeforces.com/blog/entry/57282' }];
+    });
+    
+    res.json(topicsMistakesAnalysis);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

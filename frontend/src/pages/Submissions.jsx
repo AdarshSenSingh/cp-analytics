@@ -17,11 +17,26 @@ const Submissions = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setDateRange(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Reset page to 1 when filters change
+    setPage(1);
+  };
 
   useEffect(() => {
     fetchSubmissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filter, sort]);
+  }, [page, filter, sort, dateRange]);
 
   const fetchSubmissions = async () => {
     try {
@@ -36,34 +51,17 @@ const Submissions = () => {
       
       if (filter.status) params.status = filter.status;
       
-      // Fix platform filtering for Codeforces
       if (filter.platform) {
-        // For backend API compatibility
         params.platform = filter.platform.toLowerCase();
-        
-        // Log the platform filter for debugging
-        console.log('Filtering by platform:', params.platform);
       }
       
-      if (filter.timeRange !== 'all') {
-        const now = new Date();
-        let startDate = new Date();
-        
-        switch (filter.timeRange) {
-          case 'week':
-            startDate.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            startDate.setMonth(now.getMonth() - 1);
-            break;
-          case 'year':
-            startDate.setFullYear(now.getFullYear() - 1);
-            break;
-          default:
-            break;
-        }
-        
-        params.startDate = startDate.toISOString();
+      // Add date range filters if provided
+      if (dateRange.startDate) {
+        params.startDate = dateRange.startDate;
+      }
+      
+      if (dateRange.endDate) {
+        params.endDate = dateRange.endDate;
       }
       
       // Add sorting

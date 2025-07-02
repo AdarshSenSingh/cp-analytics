@@ -67,6 +67,16 @@ const SubmissionSchema = new mongoose.Schema({
     enum: ['codeforces'], // Only allow Codeforces
     required: true,
     default: 'codeforces'
+  },
+  timeSpent: {
+    type: Number,  // Time spent in minutes
+    default: 0
+  },
+  startTime: {
+    type: Date
+  },
+  endTime: {
+    type: Date
   }
 }, {
   timestamps: true

@@ -3,16 +3,17 @@ const axios = require('axios');
 const CODEFORCES_API_BASE = 'https://codeforces.com/api';
 
 /**
- * Fetches user submissions from Codeforces
+ * Fetches user submissions from Codeforces with date filtering
  * @param {string} username - Codeforces username
  * @param {number} count - Number of submissions to fetch (max 100)
- * @returns {Promise<Array>} - Array of submissions
+ * @param {Date} startDate - Optional start date filter
+ * @param {Date} endDate - Optional end date filter
+ * @returns {Promise<Array>} - Array of filtered submissions
  */
-async function getUserSubmissions(username, count = 100) {
+async function getUserSubmissions(username, count = 100, startDate = null, endDate = null) {
   try {
     console.log(`Fetching submissions for ${username} from Codeforces API...`);
     
-    // Log the full URL for debugging
     const url = `${CODEFORCES_API_BASE}/user.status`;
     console.log(`Making request to: ${url} with params: handle=${username}, count=${count}`);
     
@@ -23,10 +24,6 @@ async function getUserSubmissions(username, count = 100) {
       },
       timeout: 15000 // 15 second timeout
     });
-    
-    // Log the response status and data structure
-    console.log(`Codeforces API response status: ${response.data.status}`);
-    console.log(`Response data structure:`, Object.keys(response.data));
     
     if (response.data.status !== 'OK') {
       throw new Error(`Codeforces API error: ${response.data.comment}`);
@@ -39,19 +36,31 @@ async function getUserSubmissions(username, count = 100) {
     
     console.log(`Successfully fetched ${response.data.result.length} submissions from Codeforces`);
     
-    // Log a sample submission to understand the structure
-    if (response.data.result.length > 0) {
-      console.log('Sample submission structure:', JSON.stringify(response.data.result[0], null, 2));
+    // Apply date filtering if provided
+    let filteredSubmissions = response.data.result;
+    
+    if (startDate || endDate) {
+      filteredSubmissions = filteredSubmissions.filter(sub => {
+        const submissionDate = new Date(sub.creationTimeSeconds * 1000);
+        
+        if (startDate && submissionDate < startDate) {
+          return false;
+        }
+        
+        if (endDate && submissionDate > endDate) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      console.log(`Filtered to ${filteredSubmissions.length} submissions within date range`);
     }
     
-    return response.data.result;
-  } catch (error) {
-    console.error('Error fetching Codeforces submissions:', error.message);
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-    }
-    throw error;
+    return filteredSubmissions;
+  } catch (err) {
+    console.error(`Error fetching Codeforces submissions for ${username}:`, err.message);
+    throw err;
   }
 }
 

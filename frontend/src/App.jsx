@@ -10,6 +10,7 @@ import SubmissionDetail from './pages/SubmissionDetail';
 import Platforms from './pages/Platforms';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="submissions/:id" element={<SubmissionDetail />} />
             <Route path="platforms" element={<Platforms />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="analytics" element={<Analytics />} />
           </Route>
         </Route>
         
