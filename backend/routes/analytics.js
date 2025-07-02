@@ -466,48 +466,11 @@ router.get('/topics-mistakes', auth, async (req, res) => {
     const topicsMistakesAnalysis = Object.keys(topicMistakes).map(topic => ({
       topic,
       mistakeCount: topicMistakes[topic],
-      problems: problemsByTopic[topic].slice(0, 3) // Limit to 3 problems per topic
+      problems: problemsByTopic[topic].slice(0, 5) // Show up to 5 problems per topic
     }));
     
     // Sort by mistake count (descending)
     topicsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
-    
-    // Add learning resources for each topic
-    const topicResources = {
-      'dynamic programming': [
-        { name: 'DP Tutorial', url: 'https://codeforces.com/blog/entry/67679' },
-        { name: 'Algorithms Live', url: 'https://www.youtube.com/watch?v=YBSt1jYwVfU' }
-      ],
-      'graphs': [
-        { name: 'Graph Algorithms', url: 'https://codeforces.com/blog/entry/16221' },
-        { name: 'CP Algorithms', url: 'https://cp-algorithms.com/graph/breadth-first-search.html' }
-      ],
-      'binary search': [
-        { name: 'Binary Search Tutorial', url: 'https://codeforces.com/blog/entry/9901' },
-        { name: 'Topcoder Tutorial', url: 'https://www.topcoder.com/thrive/articles/Binary%20Search' }
-      ],
-      'data structures': [
-        { name: 'DS Handbook', url: 'https://codeforces.com/blog/entry/15729' },
-        { name: 'Competitive Programming', url: 'https://cp-algorithms.com/data_structures/segment_tree.html' }
-      ],
-      'greedy': [
-        { name: 'Greedy Algorithms', url: 'https://codeforces.com/blog/entry/63533' },
-        { name: 'Greedy Techniques', url: 'https://www.hackerearth.com/practice/algorithms/greedy/basics-of-greedy-algorithms/tutorial/' }
-      ]
-    };
-    
-    // Add resources to each topic
-    topicsMistakesAnalysis.forEach(topic => {
-      const normalizedTopic = topic.topic.toLowerCase();
-      // Find the closest matching topic
-      const resourceKey = Object.keys(topicResources).find(key => 
-        normalizedTopic.includes(key) || key.includes(normalizedTopic)
-      );
-      
-      topic.resources = resourceKey ? 
-        topicResources[resourceKey] : 
-        [{ name: 'General CP Resources', url: 'https://codeforces.com/blog/entry/57282' }];
-    });
     
     res.json(topicsMistakesAnalysis);
   } catch (err) {

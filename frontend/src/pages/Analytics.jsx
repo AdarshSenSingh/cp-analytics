@@ -319,85 +319,67 @@ const Analytics = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">Topics with Most Mistakes</h2>
-          <p className="text-sm text-gray-500 mt-1">Focus on these topics to improve your problem-solving skills</p>
+          <p className="text-sm text-gray-500 mt-1">Topics with wrong submissions in the selected date range</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mistake Count</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suggested Problems</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learning Resources</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong Submissions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {topicsMistakesData.length > 0 ? (
-                topicsMistakesData.map((topic, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full">
-                          <span className="text-sm font-medium">{index + 1}</span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{topic.topic}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                        {topic.mistakeCount} mistakes
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col space-y-2">
-                        {topic.problems.map((problem, idx) => (
-                          <div key={idx} className="flex items-center">
-                            <a 
-                              href={problem.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-indigo-600 hover:text-indigo-900 mr-2"
-                            >
-                              {problem.title}
-                            </a>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              problem.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                              problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {problem.difficulty}
-                            </span>
+                topicsMistakesData.flatMap((topic, topicIndex) => 
+                  topic.problems.map((problem, problemIndex) => (
+                    <tr key={`${topicIndex}-${problemIndex}`} className={topicIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      {problemIndex === 0 ? (
+                        <td className="px-6 py-4 whitespace-nowrap" rowSpan={topic.problems.length}>
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full">
+                              <span className="text-sm font-medium">{topicIndex + 1}</span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{topic.topic}</div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col space-y-2">
-                        {topic.resources.map((resource, idx) => (
+                        </td>
+                      ) : null}
+                      {problemIndex === 0 ? (
+                        <td className="px-6 py-4 whitespace-nowrap" rowSpan={topic.problems.length}>
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            {topic.mistakeCount} wrong submissions
+                          </span>
+                        </td>
+                      ) : null}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
                           <a 
-                            key={idx}
-                            href={resource.url} 
+                            href={problem.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                            className="text-sm text-indigo-600 hover:text-indigo-900 mr-2"
                           >
-                            <svg className="mr-1.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                            </svg>
-                            {resource.name}
+                            {problem.title}
                           </a>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            problem.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                            problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {problem.difficulty}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )
               ) : (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                    No mistake data available. Keep practicing to see your weak areas!
+                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                    No mistake data available in the selected date range. Keep practicing to see your weak areas!
                   </td>
                 </tr>
               )}
