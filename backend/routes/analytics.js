@@ -401,7 +401,7 @@ router.get('/recommendations', auth, async (req, res) => {
 });
 
 // @route   GET api/analytics/topics-mistakes
-// @desc    Get topics with most mistakes in decreasing order
+// @desc    Get problems with most mistakes in decreasing order
 // @access  Private
 router.get('/topics-mistakes', auth, async (req, res) => {
   try {
@@ -430,49 +430,36 @@ router.get('/topics-mistakes', auth, async (req, res) => {
     // Get all failed submissions by the user with filters
     const failedSubmissions = await Submission.find(query).populate('problem');
     
-    // Count mistakes by topic
-    const topicMistakes = {};
-    const problemsByTopic = {};
+    // Count mistakes by problem
+    const problemMistakes = {};
     
     failedSubmissions.forEach(sub => {
       const problem = sub.problem;
-      if (problem && problem.topics) {
-        problem.topics.forEach(topic => {
-          if (!topicMistakes[topic]) {
-            topicMistakes[topic] = 0;
-            problemsByTopic[topic] = [];
-          }
-          
-          topicMistakes[topic] += 1;
-          
-          // Add problem to the list if not already there
-          const problemExists = problemsByTopic[topic].some(p => 
-            p.id === problem._id.toString()
-          );
-          
-          if (!problemExists) {
-            problemsByTopic[topic].push({
-              id: problem._id.toString(),
-              title: problem.title,
-              url: problem.url,
-              difficulty: problem.difficulty
-            });
-          }
-        });
+      if (!problem) return;
+      
+      const problemId = problem._id.toString();
+      
+      if (!problemMistakes[problemId]) {
+        problemMistakes[problemId] = {
+          id: problemId,
+          title: problem.title,
+          url: problem.url,
+          difficulty: problem.difficulty,
+          topics: problem.topics || [],
+          mistakeCount: 0
+        };
       }
+      
+      problemMistakes[problemId].mistakeCount += 1;
     });
     
     // Convert to array format for easier consumption by frontend
-    const topicsMistakesAnalysis = Object.keys(topicMistakes).map(topic => ({
-      topic,
-      mistakeCount: topicMistakes[topic],
-      problems: problemsByTopic[topic].slice(0, 5) // Show up to 5 problems per topic
-    }));
+    const problemsMistakesAnalysis = Object.values(problemMistakes);
     
     // Sort by mistake count (descending)
-    topicsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
+    problemsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
     
-    res.json(topicsMistakesAnalysis);
+    res.json(problemsMistakesAnalysis);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
