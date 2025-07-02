@@ -132,4 +132,64 @@ router.get('/topics/all', auth, async (req, res) => {
   }
 });
 
+// @route   PUT api/problems/:id/notes
+// @desc    Update notes for a problem
+// @access  Private
+router.put('/:id/notes', auth, async (req, res) => {
+  try {
+    const problem = await Problem.findById(req.params.id);
+    
+    if (!problem) {
+      return res.status(404).json({ msg: 'Problem not found' });
+    }
+    
+    // Initialize notes Map if it doesn't exist
+    if (!problem.notes) {
+      problem.notes = new Map();
+    }
+    
+    // Update notes for this user
+    problem.notes.set(req.user.id, req.body.notes);
+    
+    await problem.save();
+    
+    res.json({ 
+      id: problem._id,
+      notes: problem.notes.get(req.user.id) 
+    });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Problem not found' });
+    }
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET api/problems/:id/notes
+// @desc    Get notes for a problem
+// @access  Private
+router.get('/:id/notes', auth, async (req, res) => {
+  try {
+    const problem = await Problem.findById(req.params.id);
+    
+    if (!problem) {
+      return res.status(404).json({ msg: 'Problem not found' });
+    }
+    
+    const notes = problem.notes && problem.notes.get(req.user.id) || '';
+    
+    res.json({ 
+      id: problem._id,
+      notes 
+    });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Problem not found' });
+    }
+    res.status(500).send('Server error');
+  }
+});
+
 module.exports = router;

@@ -50,7 +50,18 @@ export const problemsAPI = {
   getProblem: (id) => api.get(`/problems/${id}`),
   getSolvedProblems: () => api.get('/problems/user/solved'),
   getTopics: () => api.get('/problems/topics/all'),
-  createProblem: (problemData) => api.post('/problems', problemData)
+  createProblem: (problemData) => api.post('/problems', problemData),
+  getNotes: async (problemId) => {
+    return axios.get(`/api/problems/${problemId}/notes`, {
+      headers: { 'x-auth-token': localStorage.getItem('token') }
+    });
+  },
+  updateNotes: async (problemId, notes) => {
+    return axios.put(`/api/problems/${problemId}/notes`, 
+      { notes },
+      { headers: { 'x-auth-token': localStorage.getItem('token') } }
+    );
+  }
 };
 
 // Submissions API

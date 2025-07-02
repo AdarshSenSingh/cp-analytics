@@ -38,6 +38,11 @@ const ProblemSchema = new mongoose.Schema({
   memoryLimit: {
     type: Number
   },
+  notes: {
+    type: Map,
+    of: String,
+    default: new Map() // Map of userId -> notes
+  },
   createdAt: {
     type: Date,
     default: Date.now

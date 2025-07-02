@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { analyticsAPI, platformsAPI } from '../services/api';
+import { analyticsAPI, platformsAPI, problemsAPI } from '../services/api';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -21,6 +21,67 @@ const Analytics = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [problemNotes, setProblemNotes] = useState({});
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteText, setNoteText] = useState('');
+  const [viewingNote, setViewingNote] = useState(null);
+  const [viewingProblem, setViewingProblem] = useState(null);
+
+  const handleSaveNote = async (problemId) => {
+    try {
+      const response = await problemsAPI.updateNotes(problemId, noteText);
+      
+      setProblemNotes({
+        ...problemNotes,
+        [problemId]: response.data.notes
+      });
+      
+      setEditingNoteId(null);
+    } catch (err) {
+      console.error('Error saving note:', err);
+    }
+  };
+
+  const handleEditNote = (problemId, currentNote) => {
+    setEditingNoteId(problemId);
+    setNoteText(currentNote || '');
+  };
+
+  const loadProblemNotes = async (problems) => {
+    const notesObj = {};
+    
+    for (const problem of problems) {
+      try {
+        const response = await problemsAPI.getNotes(problem.id);
+        notesObj[problem.id] = response.data.notes;
+      } catch (err) {
+        console.error(`Error loading notes for problem ${problem.id}:`, err);
+      }
+    }
+    
+    setProblemNotes(notesObj);
+  };
+
+  const handleViewNote = (problem, note) => {
+    setViewingProblem(problem);
+    setViewingNote(note);
+  };
+
+  const handleDeleteNote = async (problemId) => {
+    try {
+      await problemsAPI.updateNotes(problemId, '');
+      
+      setProblemNotes({
+        ...problemNotes,
+        [problemId]: ''
+      });
+      
+      setViewingNote(null);
+      setViewingProblem(null);
+    } catch (err) {
+      console.error('Error deleting note:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchPlatformAccounts = async () => {
@@ -90,6 +151,12 @@ const Analytics = () => {
       fetchAnalyticsData();
     }
   }, [token, selectedPlatform, dateRange]);
+
+  useEffect(() => {
+    if (topicsMistakesData.length > 0) {
+      loadProblemNotes(topicsMistakesData);
+    }
+  }, [topicsMistakesData]);
 
   // Prepare data for difficulty distribution pie chart
   const difficultyChartData = {
@@ -328,6 +395,7 @@ const Analytics = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong Submissions</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topics</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -375,11 +443,69 @@ const Analytics = () => {
                         ))}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      {editingNoteId === problem.id ? (
+                        <div className="flex flex-col space-y-2">
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            rows="3"
+                            placeholder="Add notes, concepts, or hints..."
+                          />
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSaveNote(problem.id)}
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingNoteId(null)}
+                              className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => 
+                              problemNotes[problem.id] 
+                                ? handleViewNote(problem, problemNotes[problem.id]) 
+                                : handleEditNote(problem.id, '')
+                            }
+                            className={`inline-flex items-center px-3 py-1.5 border text-xs font-medium rounded-md ${
+                              problemNotes[problem.id] 
+                                ? 'border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100' 
+                                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+                          >
+                            {problemNotes[problem.id] ? (
+                              <>
+                                <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                View Note
+                              </>
+                            ) : (
+                              <>
+                                <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Add Note
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
                     No mistake data available in the selected date range. Keep practicing to see your weak areas!
                   </td>
                 </tr>
@@ -388,6 +514,69 @@ const Analytics = () => {
           </table>
         </div>
       </div>
+      
+      {/* Note Viewing Modal */}
+      {viewingNote && viewingProblem && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => {
+                setViewingNote(null);
+                setViewingProblem(null);
+              }}></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Notes for {viewingProblem.title}
+                    </h3>
+                    <div className="mt-4">
+                      <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap text-sm text-gray-900">
+                        {viewingNote}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleEditNote(viewingProblem.id, viewingNote);
+                    setViewingNote(null);
+                    setViewingProblem(null);
+                  }}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteNote(viewingProblem.id)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-red-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingNote(null);
+                    setViewingProblem(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Activity Over Time */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
