@@ -25,27 +25,27 @@ router.get('/summary', auth, async (req, res) => {
       return acc;
     }, {});
     
-    // Get all problems solved by the user
-    const solvedProblems = await Problem.find({ _id: { $in: solvedProblemIds } });
-    
     // Count problems by difficulty
-    const problemsByDifficulty = solvedProblems.reduce((acc, prob) => {
+    const problems = await Problem.find({ _id: { $in: solvedProblemIds } });
+    const problemsByDifficulty = problems.reduce((acc, prob) => {
       acc[prob.difficulty] = (acc[prob.difficulty] || 0) + 1;
       return acc;
     }, {});
     
     // Count problems by platform
-    const problemsByPlatform = solvedProblems.reduce((acc, prob) => {
+    const problemsByPlatform = problems.reduce((acc, prob) => {
       acc[prob.platform] = (acc[prob.platform] || 0) + 1;
       return acc;
     }, {});
     
     // Count problems by topic
     const problemsByTopic = {};
-    solvedProblems.forEach(prob => {
-      prob.topics.forEach(topic => {
-        problemsByTopic[topic] = (problemsByTopic[topic] || 0) + 1;
-      });
+    problems.forEach(prob => {
+      if (prob.topics && prob.topics.length > 0) {
+        prob.topics.forEach(topic => {
+          problemsByTopic[topic] = (problemsByTopic[topic] || 0) + 1;
+        });
+      }
     });
     
     // Calculate success rate
@@ -53,6 +53,58 @@ router.get('/summary', auth, async (req, res) => {
       ? (acceptedSubmissions.length / submissions.length) * 100 
       : 0;
     
+    // Get user's platform accounts to check for actual stats
+    const user = await User.findById(req.user.id);
+    const platformAccounts = user.platformAccounts || [];
+    
+    // Check if we have LeetCode account with stats
+    const leetcodeAccount = platformAccounts.find(acc => acc.platform === 'leetcode');
+    if (leetcodeAccount && leetcodeAccount.username) {
+      // Try to get actual LeetCode stats
+      const leetcodeService = require('../services/leetcode');
+      const leetcodeStats = await leetcodeService.getUserStats(leetcodeAccount.username);
+      
+      if (leetcodeStats) {
+        // Update platform stats with actual data
+        problemsByPlatform['leetcode'] = leetcodeStats.totalSolved;
+        
+        // Update difficulty stats if we don't have much data
+        if (Object.keys(problemsByDifficulty).length === 0 || 
+            (problemsByDifficulty.easy || 0) + 
+            (problemsByDifficulty.medium || 0) + 
+            (problemsByDifficulty.hard || 0) < 10) {
+          
+          problemsByDifficulty.easy = (problemsByDifficulty.easy || 0) + leetcodeStats.easySolved;
+          problemsByDifficulty.medium = (problemsByDifficulty.medium || 0) + leetcodeStats.mediumSolved;
+          problemsByDifficulty.hard = (problemsByDifficulty.hard || 0) + leetcodeStats.hardSolved;
+        }
+        
+        // Update submission stats
+        submissionsByStatus.accepted = (submissionsByStatus.accepted || 0) + leetcodeStats.totalSolved;
+        const totalLeetcodeSubmissions = leetcodeStats.totalSubmissions || 
+                                        Math.round(leetcodeStats.totalSolved / (leetcodeStats.acceptanceRate / 100));
+        
+        // Update total submissions count
+        const totalSubmissions = submissions.length + totalLeetcodeSubmissions;
+        
+        // Recalculate success rate
+        const totalAccepted = (acceptedSubmissions.length || 0) + leetcodeStats.totalSolved;
+        const newSuccessRate = totalSubmissions > 0 ? (totalAccepted / totalSubmissions) * 100 : 0;
+        
+        res.json({
+          totalSubmissions: totalSubmissions,
+          totalSolvedProblems: solvedProblemIds.length + leetcodeStats.totalSolved,
+          submissionsByStatus,
+          problemsByDifficulty,
+          problemsByPlatform,
+          problemsByTopic,
+          successRate: newSuccessRate
+        });
+        return;
+      }
+    }
+    
+    // If we don't have LeetCode stats, return the original data
     res.json({
       totalSubmissions: submissions.length,
       totalSolvedProblems: solvedProblemIds.length,
@@ -211,4 +263,5 @@ router.get('/recommendations', auth, async (req, res) => {
 });
 
 module.exports = router;
+
 

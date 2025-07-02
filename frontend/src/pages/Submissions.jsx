@@ -226,10 +226,6 @@ const Submissions = () => {
             >
               <option value="">All Platforms</option>
               <option value="codeforces">Codeforces</option>
-              <option value="leetcode">LeetCode</option>
-              <option value="hackerrank">HackerRank</option>
-              <option value="atcoder">AtCoder</option>
-              <option value="other">Other</option>
             </select>
           </div>
           

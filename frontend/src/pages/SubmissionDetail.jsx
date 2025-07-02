@@ -7,7 +7,7 @@ import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 const SubmissionDetail = () => {
   const { id } = useParams();
-  const { token } = useAuth();
+  const { token, userId } = useAuth();
   const navigate = useNavigate();
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +24,28 @@ const SubmissionDetail = () => {
   const fetchSubmission = async () => {
     try {
       setLoading(true);
+      
+      console.log(`Fetching submission with ID: ${id}`);
+      console.log(`Current user ID: ${userId}`);
+      
       const response = await axios.get(`/api/submissions/${id}`, {
         headers: { 'x-auth-token': token }
       });
+      
+      console.log('Submission data:', response.data);
+      
+      // Convert both to strings for proper comparison
+      const submissionUserId = response.data.user.toString();
+      const currentUserId = userId.toString();
+      
+      console.log(`Comparing submission user: ${submissionUserId} with current user: ${currentUserId}`);
+      
+      if (submissionUserId !== currentUserId) {
+        console.error('Authorization error: Submission belongs to another user');
+        setError('You are not authorized to view this submission');
+        setSubmission(null);
+        return;
+      }
       
       setSubmission(response.data);
       setNotes(response.data.notes || '');
@@ -34,7 +53,7 @@ const SubmissionDetail = () => {
       setSpaceComplexity(response.data.spaceComplexity || '');
     } catch (err) {
       console.error('Error fetching submission:', err);
-      setError('Failed to load submission details');
+      setError(err.response?.data?.msg || 'Failed to load submission details');
     } finally {
       setLoading(false);
     }
@@ -416,3 +435,4 @@ const SubmissionDetail = () => {
 };
 
 export default SubmissionDetail;
+

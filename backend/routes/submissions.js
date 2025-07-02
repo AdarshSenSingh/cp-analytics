@@ -40,15 +40,13 @@ router.get('/', auth, async (req, res) => {
       query.submittedAt.$lte = new Date(endDate);
     }
     
-    console.log('Final query:', JSON.stringify(query));
+    console.log('Query:', JSON.stringify(query));
     
     // Build the base query
     let submissionsQuery = Submission.find(query);
     
-    // Add population if requested
-    if (populate) {
-      submissionsQuery = submissionsQuery.populate('problem');
-    }
+    // Always populate problem for consistency
+    submissionsQuery = submissionsQuery.populate('problem');
     
     // Add sorting
     if (sort) {
@@ -67,10 +65,12 @@ router.get('/', auth, async (req, res) => {
     // Execute query
     const submissions = await submissionsQuery.exec();
     
-    // Log the first few submissions to verify platform
+    // Log the submissions for debugging
     if (submissions.length > 0) {
       console.log(`Found ${submissions.length} submissions`);
-      console.log('First submission platform:', submissions[0].platform);
+      submissions.forEach((sub, i) => {
+        console.log(`Submission ${i+1}: platform=${sub.platform}, problem=${sub.problem ? sub.problem.title : 'null'}`);
+      });
     } else {
       console.log('No submissions found for query');
     }
@@ -85,7 +85,7 @@ router.get('/', auth, async (req, res) => {
       totalSubmissions: total
     });
   } catch (err) {
-    console.error(err.message);
+    console.error('Error fetching submissions:', err.message);
     res.status(500).send('Server error');
   }
 });
@@ -95,21 +95,26 @@ router.get('/', auth, async (req, res) => {
 // @access  Private
 router.get('/:id', auth, async (req, res) => {
   try {
-    const submission = await Submission.findById(req.params.id)
-      .populate('problem');
+    const submission = await Submission.findById(req.params.id).populate('problem');
     
     if (!submission) {
       return res.status(404).json({ msg: 'Submission not found' });
     }
     
-    // Check if the submission belongs to the user
-    if (submission.user.toString() !== req.user.id) {
-      return res.status(401).json({ msg: 'User not authorized' });
+    // Check if the submission belongs to the current user
+    // Convert both to strings for proper comparison
+    const submissionUserId = submission.user.toString();
+    const currentUserId = req.user.id.toString();
+    
+    console.log(`Comparing submission user: ${submissionUserId} with current user: ${currentUserId}`);
+    
+    if (submissionUserId !== currentUserId) {
+      return res.status(401).json({ msg: 'Not authorized to view this submission' });
     }
     
     res.json(submission);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error in GET /api/submissions/:id:', err.message);
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ msg: 'Submission not found' });
     }
@@ -233,6 +238,9 @@ router.get('/problem/:problemId', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
 
 
 

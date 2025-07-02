@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { platformsAPI } from '../services/api';
 import CodeforcesPlatformConnect from '../components/CodeforcesPlatformConnect';
-import HackerRankPlatformConnect from '../components/HackerRankPlatformConnect';
-import LeetCodePlatformConnect from '../components/LeetCodePlatformConnect';
 
 const Platforms = () => {
   const { token } = useAuth();
@@ -11,7 +9,6 @@ const Platforms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
-  const [connectPlatform, setConnectPlatform] = useState('');
   const [syncStatus, setSyncStatus] = useState({});
 
   useEffect(() => {
@@ -32,7 +29,6 @@ const Platforms = () => {
 
   const handleConnect = async (data) => {
     setShowConnect(false);
-    setConnectPlatform('');
     await fetchPlatforms();
   };
 
@@ -68,85 +64,23 @@ const Platforms = () => {
   };
 
   const renderConnectForm = () => {
-    console.log("Rendering connect form for platform:", connectPlatform);
-    
-    if (!connectPlatform) {
-      // If no platform is selected, show the platform selection menu
-      return (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Select Platform</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              onClick={() => setConnectPlatform('codeforces')}
-              className="p-4 border rounded-lg hover:bg-gray-50"
-            >
-              Codeforces
-            </button>
-            <button
-              onClick={() => setConnectPlatform('hackerrank')}
-              className="p-4 border rounded-lg hover:bg-gray-50"
-            >
-              HackerRank
-            </button>
-            <button
-              onClick={() => setConnectPlatform('leetcode')}
-              className="p-4 border rounded-lg hover:bg-gray-50"
-            >
-              LeetCode
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // If a platform is selected, show the appropriate connect form
-    switch(connectPlatform) {
-      case 'codeforces':
-        return (
-          <CodeforcesPlatformConnect 
-            onConnect={handleConnect} 
-            onError={(msg) => setError(msg)} 
-          />
-        );
-      case 'hackerrank':
-        return (
-          <HackerRankPlatformConnect 
-            onConnect={handleConnect} 
-            onError={(msg) => setError(msg)} 
-          />
-        );
-      case 'leetcode':
-        return (
-          <LeetCodePlatformConnect 
-            onConnect={handleConnect} 
-            onError={(msg) => setError(msg)} 
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  const handleConnectButtonClick = () => {
-    setShowConnect(!showConnect);
-    if (showConnect) {
-      // If we're closing the connect form, reset the platform
-      setConnectPlatform('');
-    } else {
-      // If we're opening the connect form, default to showing the platform selection
-      setConnectPlatform('');
-    }
+    return (
+      <CodeforcesPlatformConnect 
+        onConnect={handleConnect} 
+        onError={(msg) => setError(msg)} 
+      />
+    );
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Coding Platforms</h1>
+        <h1 className="text-2xl font-bold">Codeforces Integration</h1>
         <button
-          onClick={handleConnectButtonClick}
+          onClick={() => setShowConnect(!showConnect)}
           className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700"
         >
-          {showConnect ? 'Cancel' : 'Connect Platform'}
+          {showConnect ? 'Cancel' : 'Connect Codeforces'}
         </button>
       </div>
 
@@ -163,27 +97,27 @@ const Platforms = () => {
       )}
 
       {loading ? (
-        <div className="text-center py-8">Loading platforms...</div>
+        <div className="text-center py-8">Loading platform data...</div>
       ) : platforms.length === 0 ? (
         <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-700 mb-2">No platforms connected</h3>
+          <h3 className="text-lg font-medium text-gray-700 mb-2">No Codeforces account connected</h3>
           <p className="text-gray-500 mb-4">
-            Connect to coding platforms to automatically track your progress
+            Connect to Codeforces to automatically track your progress
           </p>
           <button
             onClick={() => setShowConnect(true)}
             className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700"
           >
-            Connect Your First Platform
+            Connect Codeforces
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-1">
           {platforms.map((platform) => (
             <div key={platform.platform} className="bg-white rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium capitalize">{platform.platform}</h2>
+                  <h2 className="text-lg font-medium capitalize">Codeforces</h2>
                   <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                     Connected
                   </span>
@@ -236,6 +170,7 @@ const Platforms = () => {
 };
 
 export default Platforms;
+
 
 
 

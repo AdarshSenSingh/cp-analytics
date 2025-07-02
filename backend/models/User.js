@@ -29,7 +29,7 @@ const UserSchema = new mongoose.Schema({
   platformAccounts: [{
     platform: {
       type: String,
-      enum: ['leetcode', 'codeforces', 'hackerrank', 'atcoder', 'other'],
+      enum: ['codeforces'], // Only allow Codeforces
       required: true
     },
     username: {

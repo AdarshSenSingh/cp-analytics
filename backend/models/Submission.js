@@ -64,9 +64,9 @@ const SubmissionSchema = new mongoose.Schema({
   },
   platform: {
     type: String,
-    enum: ['leetcode', 'codeforces', 'hackerrank', 'atcoder', 'other'],
+    enum: ['codeforces'], // Only allow Codeforces
     required: true,
-    default: 'other'
+    default: 'codeforces'
   }
 }, {
   timestamps: true

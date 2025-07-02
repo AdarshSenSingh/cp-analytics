@@ -10,20 +10,47 @@ const CODEFORCES_API_BASE = 'https://codeforces.com/api';
  */
 async function getUserSubmissions(username, count = 100) {
   try {
-    const response = await axios.get(`${CODEFORCES_API_BASE}/user.status`, {
+    console.log(`Fetching submissions for ${username} from Codeforces API...`);
+    
+    // Log the full URL for debugging
+    const url = `${CODEFORCES_API_BASE}/user.status`;
+    console.log(`Making request to: ${url} with params: handle=${username}, count=${count}`);
+    
+    const response = await axios.get(url, {
       params: {
         handle: username,
         count
-      }
+      },
+      timeout: 15000 // 15 second timeout
     });
+    
+    // Log the response status and data structure
+    console.log(`Codeforces API response status: ${response.data.status}`);
+    console.log(`Response data structure:`, Object.keys(response.data));
     
     if (response.data.status !== 'OK') {
       throw new Error(`Codeforces API error: ${response.data.comment}`);
     }
     
+    if (!response.data.result || !Array.isArray(response.data.result)) {
+      console.error('Invalid response format from Codeforces API:', response.data);
+      return [];
+    }
+    
+    console.log(`Successfully fetched ${response.data.result.length} submissions from Codeforces`);
+    
+    // Log a sample submission to understand the structure
+    if (response.data.result.length > 0) {
+      console.log('Sample submission structure:', JSON.stringify(response.data.result[0], null, 2));
+    }
+    
     return response.data.result;
   } catch (error) {
     console.error('Error fetching Codeforces submissions:', error.message);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+    }
     throw error;
   }
 }
@@ -61,11 +88,13 @@ async function getProblemDetails(contestId, index) {
 }
 
 /**
- * Maps Codeforces verdict to our application's status
+ * Maps Codeforces verdict to our status format
  * @param {string} verdict - Codeforces verdict
- * @returns {string} - Application status
+ * @returns {string} - Mapped status
  */
 function mapVerdict(verdict) {
+  if (!verdict) return 'pending';
+  
   const verdictMap = {
     'OK': 'accepted',
     'WRONG_ANSWER': 'wrong_answer',
@@ -79,15 +108,15 @@ function mapVerdict(verdict) {
 }
 
 /**
- * Maps Codeforces difficulty to our application's difficulty
+ * Maps Codeforces problem rating to difficulty
  * @param {number} rating - Codeforces problem rating
- * @returns {string} - Application difficulty
+ * @returns {string} - Difficulty level
  */
 function mapDifficulty(rating) {
-  if (!rating) return 'unknown';
+  if (!rating) return 'medium';
   
-  if (rating < 1400) return 'easy';
-  if (rating < 2000) return 'medium';
+  if (rating < 1200) return 'easy';
+  if (rating < 1800) return 'medium';
   return 'hard';
 }
 
