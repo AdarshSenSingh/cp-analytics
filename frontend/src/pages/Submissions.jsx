@@ -1,42 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const Submissions = () => {
-  const { token } = useAuth();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState({
     status: '',
-    platform: '',
-    timeRange: 'all'
+    platform: ''
+  });
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
   });
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
-  const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  });
-
-  const handleDateChange = (e) => {
-    const { name, value } = e.target;
-    setDateRange(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Reset page to 1 when filters change
-    setPage(1);
-  };
 
   useEffect(() => {
     fetchSubmissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filter, sort, dateRange]);
+  }, [page]);
 
   const fetchSubmissions = async () => {
     try {
@@ -44,67 +29,28 @@ const Submissions = () => {
       
       // Build query parameters
       const params = {
-        populate: 'problem',
         page,
-        limit: itemsPerPage
+        limit: itemsPerPage,
+        sort
       };
       
       if (filter.status) params.status = filter.status;
+      if (filter.platform) params.platform = filter.platform;
+      if (dateRange.startDate) params.startDate = dateRange.startDate;
+      if (dateRange.endDate) params.endDate = dateRange.endDate;
       
-      if (filter.platform) {
-        params.platform = filter.platform.toLowerCase();
-      }
-      
-      // Add date range filters if provided
-      if (dateRange.startDate) {
-        params.startDate = dateRange.startDate;
-      }
-      
-      if (dateRange.endDate) {
-        params.endDate = dateRange.endDate;
-      }
-      
-      // Add sorting
-      if (sort === 'newest') {
-        params.sort = '-submittedAt';
-      } else if (sort === 'oldest') {
-        params.sort = 'submittedAt';
-      }
-      
-      console.log('Sending request with params:', params);
-      
+      const token = localStorage.getItem('token');
       const response = await axios.get('/api/submissions', {
         params,
         headers: { 'x-auth-token': token }
       });
       
-      console.log('Response data:', response.data);
-      
-      // Ensure we're using the correct data structure from the response
-      let submissionsData = response.data;
-      if (response.data.submissions) {
-        submissionsData = response.data.submissions;
-      }
-      
-      // Log the first submission to check its structure
-      if (submissionsData.length > 0) {
-        console.log('First submission:', submissionsData[0]);
-      }
-      
-      setSubmissions(submissionsData);
-      
-      // Set total pages if pagination info is available
-      if (response.data.totalPages) {
-        setTotalPages(response.data.totalPages);
-      } else {
-        // Estimate total pages if not provided
-        const totalItems = submissionsData.length;
-        setTotalPages(Math.ceil(totalItems / itemsPerPage));
-      }
-      
+      setSubmissions(response.data.submissions);
+      setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+      setError(null);
     } catch (err) {
       console.error('Error fetching submissions:', err);
-      setError('Failed to load submissions');
+      setError('Failed to load submissions. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -112,25 +58,25 @@ const Submissions = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Filter changed: ${name} = ${value}`);
-    
-    // Reset other filters when changing platform to avoid conflicts
-    if (name === 'platform') {
-      setFilter(prev => ({ 
-        ...prev, 
-        [name]: value,
-        // Keep other filters as they are
-      }));
-    } else {
-      setFilter(prev => ({ ...prev, [name]: value }));
-    }
-    
-    setPage(1); // Reset to first page when filter changes
+    setFilter(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setDateRange(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSortChange = (e) => {
     setSort(e.target.value);
-    setPage(1); // Reset to first page when sort changes
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+  };
+
+  const handleApplyFilters = () => {
+    setPage(1); // Reset to first page when applying new filters
+    fetchSubmissions();
   };
 
   const getStatusBadgeClass = (status) => {
@@ -146,61 +92,40 @@ const Submissions = () => {
       case 'runtime_error':
         return 'bg-purple-100 text-purple-800';
       case 'compilation_error':
-        return 'bg-blue-100 text-blue-800';
-      default:
         return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
     }
   };
 
   const formatStatus = (status) => {
-    return status.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+    return status
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
-  const renderPlatformBadge = (platform) => {
-    const platformColors = {
-      leetcode: 'bg-yellow-100 text-yellow-800',
-      codeforces: 'bg-blue-100 text-blue-800',
-      hackerrank: 'bg-green-100 text-green-800',
-      atcoder: 'bg-purple-100 text-purple-800',
-      other: 'bg-gray-100 text-gray-800'
-    };
-    
-    const color = platformColors[platform] || platformColors.other;
-    
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-        {platform.charAt(0).toUpperCase() + platform.slice(1)}
-      </span>
-    );
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
-
-  if (loading && submissions.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Submission History</h1>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900">Submissions</h1>
       
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow p-5">
+        <h2 className="text-lg font-medium text-gray-900 mb-3">Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               id="status"
               name="status"
               value={filter.status}
               onChange={handleFilterChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
             >
               <option value="">All Statuses</option>
               <option value="accepted">Accepted</option>
@@ -209,18 +134,17 @@ const Submissions = () => {
               <option value="memory_limit_exceeded">Memory Limit Exceeded</option>
               <option value="runtime_error">Runtime Error</option>
               <option value="compilation_error">Compilation Error</option>
-              <option value="other">Other</option>
             </select>
           </div>
           
           <div>
-            <label htmlFor="platform" className="block text-sm font-medium text-gray-700">Platform</label>
+            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
             <select
               id="platform"
               name="platform"
               value={filter.platform}
               onChange={handleFilterChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
             >
               <option value="">All Platforms</option>
               <option value="codeforces">Codeforces</option>
@@ -228,83 +152,115 @@ const Submissions = () => {
           </div>
           
           <div>
-            <label htmlFor="timeRange" className="block text-sm font-medium text-gray-700">Time Range</label>
-            <select
-              id="timeRange"
-              name="timeRange"
-              value={filter.timeRange}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="all">All Time</option>
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="year">Last Year</option>
-            </select>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={dateRange.startDate}
+              onChange={handleDateChange}
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+            />
           </div>
           
           <div>
-            <label htmlFor="sort" className="block text-sm font-medium text-gray-700">Sort By</label>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              id="endDate"
+              name="endDate"
+              value={dateRange.endDate}
+              onChange={handleDateChange}
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
             <select
               id="sort"
               name="sort"
               value={sort}
               onChange={handleSortChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
             </select>
           </div>
         </div>
+        
+        <div className="mt-4">
+          <button
+            onClick={handleApplyFilters}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
       
-      {error && (
-        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">{error}</span>
+      {/* Submissions List */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-900">Your Submissions</h2>
         </div>
-      )}
-      
-      {/* Submissions Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Problem
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Platform
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Language
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Submitted At
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {submissions.length > 0 ? (
-                submissions.map((submission) => (
-                  <tr key={submission._id} className="hover:bg-gray-50">
+        
+        {loading ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-gray-500">Loading submissions...</p>
+          </div>
+        ) : error ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-red-500">{error}</p>
+          </div>
+        ) : submissions.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-gray-500">No submissions found matching your filters.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Problem
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Platform
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Language
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Submitted At
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {submissions.map((submission) => (
+                  <tr key={submission._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Link to={`/problems/${submission.problem._id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {submission.problem.title}
-                      </Link>
+                      <div className="text-sm font-medium text-gray-900">
+                        <Link to={`/problems/${submission.problem._id}`} className="hover:text-indigo-600">
+                          {submission.problem.title}
+                        </Link>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {submission.problem.difficulty}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {renderPlatformBadge(submission.platform)}
+                      <div className="text-sm text-gray-900 capitalize">{submission.platform}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(submission.status)}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(submission.status)}`}>
                         {formatStatus(submission.status)}
                       </span>
                     </td>
@@ -312,44 +268,43 @@ const Submissions = () => {
                       {submission.language}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(submission.submittedAt).toLocaleString()}
+                      {formatDate(submission.submittedAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <Link to={`/submissions/${submission._id}`} className="text-indigo-600 hover:text-indigo-900 mr-3">
                         View
                       </Link>
+                      {submission.status !== 'accepted' && (
+                        <Link to={`/problems/${submission.problem._id}`} className="text-green-600 hover:text-green-900">
+                          Retry
+                        </Link>
+                      )}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No submissions found. Start solving problems to see your submission history!
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        {!loading && !error && submissions.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
-                onClick={() => setPage(Math.max(1, page - 1))}
+                onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
                 className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                  page === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 Previous
               </button>
               <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
                 className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                  page === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 Next
@@ -366,10 +321,10 @@ const Submissions = () => {
               <div>
                 <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                   <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
+                    onClick={() => handlePageChange(page - 1)}
                     disabled={page === 1}
-                    className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                      page === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                    className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+                      page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50'
                     }`}
                   >
                     <span className="sr-only">Previous</span>
@@ -379,25 +334,24 @@ const Submissions = () => {
                   </button>
                   
                   {/* Page numbers */}
-                  {[...Array(totalPages).keys()].map((num) => (
-                    <button
-                      key={num + 1}
-                      onClick={() => setPage(num + 1)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        page === num + 1
-                          ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {num + 1}
-                    </button>
-                  ))}
+                  {/* Page numbers */}
+{Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((num) => (
+  <button
+    key={num}
+    onClick={() => handlePageChange(num)}
+    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+      page === num ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white text-gray-500 hover:bg-gray-50'
+    }`}
+  >
+    {num}
+  </button>
+))}
                   
                   <button
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    onClick={() => handlePageChange(page + 1)}
                     disabled={page === totalPages}
-                    className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                      page === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                    className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
+                      page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50'
                     }`}
                   >
                     <span className="sr-only">Next</span>
@@ -416,13 +370,3 @@ const Submissions = () => {
 };
 
 export default Submissions;
-
-
-
-
-
-
-
-
-
-

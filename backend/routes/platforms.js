@@ -14,7 +14,7 @@ const codeforcesService = require('../services/codeforces');
 // @access  Private
 router.post('/connect', auth, async (req, res) => {
   try {
-    const { platform, username, accessToken, refreshToken } = req.body;
+    const { platform, username } = req.body;
     
     // Validate input
     if (!platform || !username) {
@@ -56,8 +56,6 @@ router.post('/connect', auth, async (req, res) => {
       user.platformAccounts[platformIndex] = {
         ...user.platformAccounts[platformIndex],
         username,
-        accessToken,
-        refreshToken,
         lastSynced: null
       };
     } else {
@@ -65,8 +63,6 @@ router.post('/connect', auth, async (req, res) => {
       user.platformAccounts.push({
         platform,
         username,
-        accessToken,
-        refreshToken,
         lastSynced: null,
         stats: {
           problemsSolved: 0,

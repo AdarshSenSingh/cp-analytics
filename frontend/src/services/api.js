@@ -76,34 +76,19 @@ export const submissionsAPI = {
 // Analytics API
 export const analyticsAPI = {
   getSummary: (token, params) => {
-    return axios.get(`/api/analytics/summary`, {
-      headers: { 'x-auth-token': token },
-      params
-    });
+    return api.get('/analytics/summary', { params });
   },
   getTopics: (token, params) => {
-    return axios.get(`/api/analytics/topics`, {
-      headers: { 'x-auth-token': token },
-      params
-    });
+    return api.get('/analytics/topics', { params });
   },
   getActivity: (token, params) => {
-    return axios.get(`/api/analytics/activity`, {
-      headers: { 'x-auth-token': token },
-      params
-    });
+    return api.get('/analytics/activity', { params });
   },
   getTopicsMistakes: (token, params) => {
-    return axios.get(`/api/analytics/topics-mistakes`, {
-      headers: { 'x-auth-token': token },
-      params
-    });
+    return api.get('/analytics/topics-mistakes', { params });
   },
   getRatings: (token, params) => {
-    return axios.get(`/api/analytics/ratings`, {
-      headers: { 'x-auth-token': token },
-      params
-    });
+    return api.get('/analytics/ratings', { params });
   }
 };
 

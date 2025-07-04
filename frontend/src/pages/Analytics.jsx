@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { analyticsAPI, platformsAPI, problemsAPI } from '../services/api';
+import { analyticsAPI, platformsAPI } from '../services/api';
 import axios from 'axios';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { flushSync } from 'react-dom';
 
 // Register Chart.js components
 Chart.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const Analytics = () => {
-  const { token } = useAuth();
+  // Get token from auth context with fallback to localStorage
+  const auth = useAuth() || {};
+  const token = auth.token || localStorage.getItem('token');
+  
   const [summaryData, setSummaryData] = useState(null);
   const [topicsData, setTopicsData] = useState([]);
   const [activityData, setActivityData] = useState([]);
@@ -82,11 +86,64 @@ const Analytics = () => {
     }
   };
 
+  // Handle date range change without page refresh
+  const handleDateRangeChange = (newRange) => {
+    // Use flushSync to ensure state updates before re-fetching data
+    flushSync(() => {
+      setDateRange(newRange);
+    });
+    // Data will be fetched in the useEffect that depends on dateRange
+  };
+
+  // Add a sync function
+  const handleSync = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Use the token from state/localStorage
+      await axios.post(`/api/platforms/sync/${selectedPlatform}`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      // Refetch all data after sync
+      const accountsResponse = await platformsAPI.getAccounts();
+      setPlatformAccounts(accountsResponse.data.platformAccounts || []);
+      
+      // Prepare query params
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+      if (selectedPlatform) params.append('platform', selectedPlatform);
+      
+      // Refetch all data
+      const summaryResponse = await analyticsAPI.getSummary(token, params);
+      setSummaryData(summaryResponse.data);
+      
+      const topicsResponse = await analyticsAPI.getTopics(token, params);
+      setTopicsData(topicsResponse.data);
+      
+      const activityResponse = await analyticsAPI.getActivity(token, params);
+      setActivityData(activityResponse.data);
+      
+      const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
+      setTopicsMistakesData(mistakesResponse.data);
+      
+      const ratingsResponse = await analyticsAPI.getRatings(token, params);
+      setRatingsData(ratingsResponse.data);
+      
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error syncing with Codeforces:', err);
+      setError('Failed to sync with Codeforces. Please try again later.');
+      setIsLoading(false);
+    }
+  };
+
   // Fetch data when component mounts or filters change
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      setError(null); // Reset error state
+      setError(null);
       try {
         // Fetch platform accounts
         const accountsResponse = await platformsAPI.getAccounts();
@@ -98,48 +155,36 @@ const Analytics = () => {
         if (dateRange.endDate) params.append('endDate', dateRange.endDate);
         if (selectedPlatform) params.append('platform', selectedPlatform);
         
-        // Use axios directly instead of analyticsAPI
-        const summaryResponse = await axios.get(`/api/analytics/summary`, {
-          headers: { 'x-auth-token': token },
-          params
-        });
+        // Fetch summary data
+        const summaryResponse = await analyticsAPI.getSummary(token, params);
         setSummaryData(summaryResponse.data);
         
-        const topicsResponse = await axios.get(`/api/analytics/topics`, {
-          headers: { 'x-auth-token': token },
-          params
-        });
+        // Fetch topics data
+        const topicsResponse = await analyticsAPI.getTopics(token, params);
         setTopicsData(topicsResponse.data);
         
-        const activityResponse = await axios.get(`/api/analytics/activity`, {
-          headers: { 'x-auth-token': token },
-          params
-        });
+        // Fetch activity data
+        const activityResponse = await analyticsAPI.getActivity(token, params);
         setActivityData(activityResponse.data);
         
-        const mistakesResponse = await axios.get(`/api/analytics/topics-mistakes`, {
-          headers: { 'x-auth-token': token },
-          params
-        });
+        // Fetch topics mistakes data
+        const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
         setTopicsMistakesData(mistakesResponse.data);
         
-        const ratingsResponse = await axios.get(`/api/analytics/ratings`, {
-          headers: { 'x-auth-token': token },
-          params
-        });
+        // Fetch ratings data
+        const ratingsResponse = await analyticsAPI.getRatings(token, params);
         setRatingsData(ratingsResponse.data);
         
-        console.log('Ratings data:', ratingsResponse.data);
+        setIsLoading(false);
       } catch (err) {
         console.error('Error fetching analytics data:', err);
         setError('Failed to load analytics data. Please try again later.');
-      } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
-  }, [token, dateRange, selectedPlatform]);
+  }, [dateRange, selectedPlatform, token]);
 
   useEffect(() => {
     if (topicsMistakesData.length > 0) {
@@ -241,14 +286,16 @@ const Analytics = () => {
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
-    setDateRange(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setDateRange(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePlatformChange = (e) => {
     setSelectedPlatform(e.target.value);
+  };
+
+  const handleApplyFilters = () => {
+    // This will trigger the useEffect that depends on dateRange and selectedPlatform
+    // No need for page refresh
   };
 
   if (isLoading) {
@@ -274,7 +321,18 @@ const Analytics = () => {
     <div className="space-y-8">
       {/* Platform Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold">Codeforces Analytics</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Codeforces Analytics</h1>
+          {platformAccount && (
+            <button 
+              onClick={handleSync}
+              disabled={isLoading}
+              className="px-4 py-2 bg-white text-blue-700 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
+            >
+              {isLoading ? 'Syncing...' : 'Sync Now'}
+            </button>
+          )}
+        </div>
         {platformAccount && (
           <div className="mt-2">
             <p className="text-lg">Username: <span className="font-semibold">{platformAccount.username}</span></p>
@@ -310,13 +368,14 @@ const Analytics = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
             <input
               type="date"
+              id="startDate"
               name="startDate"
               value={dateRange.startDate}
               onChange={handleDateChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
             />
           </div>
           
@@ -330,6 +389,15 @@ const Analytics = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             />
           </div>
+        </div>
+        
+        <div className="mt-4">
+          <button
+            onClick={handleApplyFilters}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Apply Filters
+          </button>
         </div>
       </div>
       
