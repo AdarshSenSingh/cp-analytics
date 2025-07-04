@@ -1,51 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 const Profile = () => {
-  const { token, user } = useAuth();
+  const { token, user, updateUser } = useAuth();
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    joinedDate: '2023-01-15',
+    name: '',
+    email: '',
+    username: '',
+    contactInfo: {
+      mobile: '',
+      city: '',
+      state: '',
+      pinCode: '',
+      country: ''
+    },
+    profilePicture: '',
+    joinedDate: '',
     preferences: {
       reminderFrequency: 'weekly',
       preferredDifficulty: 'medium',
-      preferredTopics: ['arrays', 'dynamic programming', 'graphs'],
+      preferredTopics: [],
       darkMode: false
     },
-    stats: {
-      totalSolved: 127,
-      totalSubmissions: 215,
-      successRate: 78.5,
-      points: 1250
-    },
-    platforms: [
-      { name: 'LeetCode', username: 'johndoe_leet', problemsSolved: 85 },
-      { name: 'Codeforces', username: 'johndoe_cf', problemsSolved: 42 }
-    ],
-    achievements: [
-      { name: 'First Blood', description: 'Solved your first problem', earnedAt: '2023-01-16', icon: '🏆' },
-      { name: 'Streak Master', description: 'Solved problems for 7 consecutive days', earnedAt: '2023-02-01', icon: '🔥' },
-      { name: 'Algorithm Ace', description: 'Solved 50 algorithm problems', earnedAt: '2023-03-15', icon: '⭐' }
-    ]
+    platformAccounts: []
   });
   
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   useEffect(() => {
-    // In a real app, fetch user profile data from API
-    // For now, we're using sample data
-    setFormData({
-      name: profile.name,
-      email: profile.email,
-      reminderFrequency: profile.preferences.reminderFrequency,
-      preferredDifficulty: profile.preferences.preferredDifficulty,
-      preferredTopics: profile.preferences.preferredTopics.join(', '),
-      darkMode: profile.preferences.darkMode
-    });
-  }, [profile]);
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get('/api/users/profile', {
+          headers: { 'x-auth-token': token }
+        });
+        
+        setProfile(response.data);
+        setFormData({
+          name: response.data.name,
+          email: response.data.email,
+          mobile: response.data.contactInfo?.mobile || '',
+          city: response.data.contactInfo?.city || '',
+          state: response.data.contactInfo?.state || '',
+          pinCode: response.data.contactInfo?.pinCode || '',
+          country: response.data.contactInfo?.country || '',
+          reminderFrequency: response.data.preferences?.reminderFrequency || 'weekly',
+          preferredDifficulty: response.data.preferences?.preferredDifficulty || 'medium',
+          preferredTopics: response.data.preferences?.preferredTopics?.join(', ') || '',
+          darkMode: response.data.preferences?.darkMode || false
+        });
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+    
+    fetchProfile();
+  }, [token]);
   
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -55,23 +68,73 @@ const Profile = () => {
     });
   };
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, send updated profile to API
-    const updatedProfile = {
-      ...profile,
-      name: formData.name,
-      email: formData.email,
-      preferences: {
-        ...profile.preferences,
-        reminderFrequency: formData.reminderFrequency,
-        preferredDifficulty: formData.preferredDifficulty,
-        preferredTopics: formData.preferredTopics.split(',').map(topic => topic.trim()),
-        darkMode: formData.darkMode
-      }
-    };
-    setProfile(updatedProfile);
-    setIsEditing(false);
+    try {
+      const updatedProfile = {
+        name: formData.name,
+        email: formData.email,
+        contactInfo: {
+          mobile: formData.mobile,
+          city: formData.city,
+          state: formData.state,
+          pinCode: formData.pinCode,
+          country: formData.country
+        },
+        preferences: {
+          reminderFrequency: formData.reminderFrequency,
+          preferredDifficulty: formData.preferredDifficulty,
+          preferredTopics: formData.preferredTopics.split(',').map(topic => topic.trim()),
+          darkMode: formData.darkMode
+        }
+      };
+      
+      const response = await axios.put('/api/users/profile', updatedProfile, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      setProfile(response.data);
+      updateUser(response.data);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+    }
+  };
+  
+  const handleProfilePictureClick = () => {
+    fileInputRef.current.click();
+  };
+  
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    
+    try {
+      setIsUploading(true);
+      const response = await axios.post('/api/users/profile/picture', formData, {
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setProfile(prev => ({
+        ...prev,
+        profilePicture: response.data.profilePicture
+      }));
+      
+      updateUser({
+        ...user,
+        profilePicture: response.data.profilePicture
+      });
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   return (
@@ -84,8 +147,31 @@ const Profile = () => {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="bg-primary-600 px-6 py-4">
               <div className="flex items-center justify-center">
-                <div className="h-24 w-24 rounded-full bg-white flex items-center justify-center text-4xl">
-                  {profile.name.charAt(0)}
+                <div 
+                  className="relative h-24 w-24 rounded-full bg-white flex items-center justify-center text-4xl cursor-pointer"
+                  onClick={handleProfilePictureClick}
+                >
+                  {profile.profilePicture ? (
+                    <img 
+                      src={profile.profilePicture} 
+                      alt={profile.name} 
+                      className="h-24 w-24 rounded-full object-cover"
+                    />
+                  ) : (
+                    profile.name?.charAt(0) || 'U'
+                  )}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
                 </div>
               </div>
             </div>
@@ -122,16 +208,16 @@ const Profile = () => {
             </div>
             
             <div className="divide-y divide-gray-200">
-              {profile.platforms.map((platform, index) => (
+              {profile.platformAccounts.map((platform, index) => (
                 <div key={index} className="px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium">{platform.name}</h3>
+                      <h3 className="font-medium">{platform.platform}</h3>
                       <p className="text-sm text-gray-500">{platform.username}</p>
                     </div>
                     <div>
                       <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                        {platform.problemsSolved} solved
+                        {platform.stats?.problemsSolved || 0} solved
                       </span>
                     </div>
                   </div>
@@ -140,9 +226,9 @@ const Profile = () => {
             </div>
             
             <div className="px-6 py-4 bg-gray-50">
-              <button className="text-sm font-medium text-primary-600 hover:text-primary-500">
+              <Link to="/platforms" className="text-sm font-medium text-primary-600 hover:text-primary-500">
                 Connect new platform
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -155,102 +241,127 @@ const Profile = () => {
                 <h2 className="text-lg font-medium">Edit Profile</h2>
               </div>
               
-              <form onSubmit={handleSubmit} className="px-6 py-4">
-                <div className="grid grid-cols-1 gap-6">
+              <form onSubmit={handleSubmit} className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name
+                    </label>
                     <input
                       type="text"
                       id="name"
                       name="name"
-                      value={formData.name}
+                      value={formData.name || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       id="email"
                       name="email"
-                      value={formData.email}
+                      value={formData.email || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="reminderFrequency" className="block text-sm font-medium text-gray-700">Reminder Frequency</label>
-                    <select
-                      id="reminderFrequency"
-                      name="reminderFrequency"
-                      value={formData.reminderFrequency}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="never">Never</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="preferredDifficulty" className="block text-sm font-medium text-gray-700">Preferred Difficulty</label>
-                    <select
-                      id="preferredDifficulty"
-                      name="preferredDifficulty"
-                      value={formData.preferredDifficulty}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    >
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                      <option value="all">All</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="preferredTopics" className="block text-sm font-medium text-gray-700">Preferred Topics (comma-separated)</label>
+                    <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 mb-1">
+                      Mobile Number
+                    </label>
                     <input
                       type="text"
-                      id="preferredTopics"
-                      name="preferredTopics"
-                      value={formData.preferredTopics}
+                      id="mobile"
+                      name="mobile"
+                      value={formData.mobile || ''}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                   
-                  <div className="flex items-center">
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                      City
+                    </label>
                     <input
-                      type="checkbox"
-                      id="darkMode"
-                      name="darkMode"
-                      checked={formData.darkMode}
+                      type="text"
+                      id="city"
+                      name="city"
+                      value={formData.city || ''}
                       onChange={handleChange}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
-                    <label htmlFor="darkMode" className="ml-2 block text-sm text-gray-700">Dark Mode</label>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      id="state"
+                      name="state"
+                      value={formData.state || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="pinCode" className="block text-sm font-medium text-gray-700 mb-1">
+                      PIN Code
+                    </label>
+                    <input
+                      type="text"
+                      id="pinCode"
+                      name="pinCode"
+                      value={formData.pinCode || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      id="country"
+                      name="country"
+                      value={formData.country || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
                   </div>
                 </div>
                 
-                <div className="mt-6 flex justify-end space-x-3">
+                {/* Preferences section */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-medium mb-4">Preferences</h3>
+                  
+                  {/* Existing preferences fields... */}
+                </div>
+                
+                <div className="mt-8 flex justify-end space-x-4">
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-primary-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
-                    Save
+                    Save Changes
                   </button>
                 </div>
               </form>

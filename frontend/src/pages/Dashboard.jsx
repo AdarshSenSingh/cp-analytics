@@ -3,11 +3,16 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import ProfilePopup from '../components/ProfilePopup';
 
 // Register Chart.js components
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const Dashboard = () => {
+  const token = localStorage.getItem('token');
+  const [user, setUser] = useState(null);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  
   const [stats, setStats] = useState({
     totalProblems: 0,
     solvedToday: 0,
@@ -16,13 +21,38 @@ const Dashboard = () => {
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [platformAccounts, setPlatformAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Add this function to handle profile updates
+  const handleProfileUpdate = (updatedUser) => {
+    setUser(updatedUser);
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        
+        // Fetch user data
+        if (token) {
+          try {
+            const userResponse = await axios.get('/api/auth/me', {
+              headers: { 'x-auth-token': token }
+            });
+            setUser(userResponse.data);
+          } catch (userErr) {
+            console.error('Error fetching user:', userErr);
+          }
+        }
+        
+        // Fetch platform accounts
+        const accountsResponse = await axios.get('/api/platforms/accounts', {
+          headers: { 'x-auth-token': token }
+        });
+        
+        setPlatformAccounts(accountsResponse.data.platformAccounts || []);
         
         // TEMPORARY: Use mock data instead of API calls
         // Comment out or remove these API calls if backend is not ready
@@ -101,7 +131,7 @@ const Dashboard = () => {
     };
     
     fetchDashboardData();
-  }, []);
+  }, [token]);
 
   // Prepare data for activity chart
   const activityData = {
@@ -116,8 +146,65 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        
+        {/* User Profile Quick Access */}
+        <div className="flex items-center space-x-4">
+          {platformAccounts.map(account => (
+            <a 
+              key={account.platform} 
+              href={`https://codeforces.com/profile/${account.username}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100"
+            >
+              <img 
+                src="/images/codeforces.png" 
+                alt="Codeforces" 
+                className="w-5 h-5 mr-2"
+                onError={(e) => {
+                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZiNzI4MCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MSAwLTgtMy41OS04LThzMy41OS04IDgtOCA4IDMuNTkgOCA4LTMuNTkgOC04IDh6Ii8+PC9zdmc+';
+                }}
+              />
+              {account.username}
+            </a>
+          ))}
+          
+          <button 
+            onClick={() => setShowProfilePopup(true)}
+            className="flex items-center"
+          >
+            {user?.profilePicture ? (
+              <img 
+                src={user.profilePicture} 
+                alt={user.name || user.username} 
+                className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className={`w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-medium border-2 border-indigo-500 ${user?.profilePicture ? 'hidden' : ''}`}
+            >
+              {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+            </div>
+          </button>
+        </div>
+      </div>
+      
+      {/* Profile Popup */}
+      {showProfilePopup && (
+        <ProfilePopup 
+          user={user} 
+          onClose={() => setShowProfilePopup(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
       
       {loading ? (
         <div className="text-center py-10">

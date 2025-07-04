@@ -36,6 +36,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/coding-tr
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', require('./routes/users')); // Make sure users routes are registered
 app.use('/api/problems', problemRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/platforms', platformRoutes);

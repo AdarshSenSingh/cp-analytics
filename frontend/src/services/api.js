@@ -44,6 +44,16 @@ export const authAPI = {
   getCurrentUser: () => api.get('/auth/me')
 };
 
+// Users API
+export const usersAPI = {
+  updateProfile: (profileData) => api.put('/users/profile', profileData),
+  uploadProfilePicture: (formData) => api.post('/users/profile/picture', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+};
+
 // Problems API
 export const problemsAPI = {
   getProblems: (params) => api.get('/problems', { params }),

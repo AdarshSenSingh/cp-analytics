@@ -121,4 +121,31 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// @route   PUT api/auth/profile
+// @desc    Update user profile (DEPRECATED - Use /api/users/profile instead)
+// @access  Private
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { name, email, contactInfo } = req.body;
+    
+    // Build profile object
+    const profileFields = {};
+    if (name) profileFields.name = name;
+    if (email) profileFields.email = email;
+    if (contactInfo) profileFields.contactInfo = contactInfo;
+    
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: profileFields },
+      { new: true }
+    ).select('-password');
+    
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;

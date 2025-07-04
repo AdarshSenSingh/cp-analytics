@@ -26,6 +26,17 @@ const UserSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  profilePicture: {
+    type: String,
+    default: ''
+  },
+  contactInfo: {
+    mobile: String,
+    city: String,
+    state: String,
+    pinCode: String,
+    country: String
+  },
   platformAccounts: [{
     platform: {
       type: String,
