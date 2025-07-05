@@ -61,21 +61,39 @@ router.put('/profile', auth, async (req, res) => {
     // Build profile object
     const profileFields = {};
     if (name) profileFields.name = name;
-    if (email) profileFields.email = email;
     if (contactInfo) profileFields.contactInfo = contactInfo;
     if (preferences) profileFields.preferences = preferences;
     
-    // Update user
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: profileFields },
-      { new: true }
-    ).select('-password');
+    // Only update email if it's changed and not already in use
+    if (email) {
+      // Check if email already exists for a different user
+      const existingUser = await User.findOne({ email, _id: { $ne: req.user.id } });
+      if (existingUser) {
+        return res.status(400).json({ msg: 'Email already in use by another account' });
+      }
+      profileFields.email = email;
+    }
     
-    res.json(user);
+    // Update user with error handling
+    try {
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { $set: profileFields },
+        { new: true }
+      ).select('-password');
+      
+      if (!user) {
+        return res.status(404).json({ msg: 'User not found' });
+      }
+      
+      res.json(user);
+    } catch (dbErr) {
+      console.error('MongoDB error:', dbErr);
+      res.status(500).json({ msg: 'Database error', error: dbErr.message });
+    }
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Server error:', err.message);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 });
 

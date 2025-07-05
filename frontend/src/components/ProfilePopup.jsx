@@ -37,28 +37,29 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
         if (formData.country) updatedProfile.contactInfo.country = formData.country;
       }
       
-      console.log('Sending simplified profile update:', updatedProfile);
+      console.log('Sending profile update:', updatedProfile);
       
-      // Use the users API service
-      const response = await usersAPI.updateProfile(updatedProfile);
-      
-      console.log('Profile update response:', response.data);
-      
-      // Create a merged user object for the UI update
-      const updatedUser = {
-        ...user,
-        ...updatedProfile
-      };
-      
-      onUpdate(updatedUser);
-      setIsEditing(false);
-      alert("Profile updated successfully!");
+      // Use the users API service with better error handling
+      try {
+        const response = await usersAPI.updateProfile(updatedProfile);
+        console.log('Profile update response:', response.data);
+        
+        // Create a merged user object for the UI update
+        const updatedUser = {
+          ...user,
+          ...updatedProfile
+        };
+        
+        onUpdate(updatedUser);
+        setIsEditing(false);
+        alert("Profile updated successfully!");
+      } catch (apiErr) {
+        console.error('API error:', apiErr);
+        const errorMsg = apiErr.response?.data?.msg || 'Failed to update profile';
+        alert(`Error: ${errorMsg}`);
+      }
     } catch (err) {
       console.error('Error updating profile:', err);
-      if (err.response) {
-        console.error('Error response:', err.response.data);
-        console.error('Error status:', err.response.status);
-      }
       alert("Failed to update profile. Please try again.");
     }
   };
