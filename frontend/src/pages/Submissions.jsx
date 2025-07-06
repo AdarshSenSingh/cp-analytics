@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
@@ -17,27 +17,31 @@ const Submissions = () => {
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isSyncing, setIsSyncing] = useState(false);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchSubmissions();
-  }, [page]);
-
-  const fetchSubmissions = async () => {
+  // Create a reusable fetch function with useCallback
+  const fetchSubmissions = useCallback(async () => {
     try {
       setLoading(true);
       
       // Build query parameters
       const params = {
         page,
-        limit: itemsPerPage,
-        sort
+        limit: itemsPerPage
       };
       
       if (filter.status) params.status = filter.status;
       if (filter.platform) params.platform = filter.platform;
       if (dateRange.startDate) params.startDate = dateRange.startDate;
       if (dateRange.endDate) params.endDate = dateRange.endDate;
+      
+      // Set the sort parameter based on the sort state
+      if (sort === 'newest') {
+        params.sort = '-submittedAt'; // Descending order (newest first)
+      } else if (sort === 'oldest') {
+        params.sort = 'submittedAt'; // Ascending order (oldest first)
+      }
       
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/submissions', {
@@ -46,7 +50,7 @@ const Submissions = () => {
       });
       
       setSubmissions(response.data.submissions);
-      setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+      setTotalPages(Math.ceil(response.data.totalSubmissions / itemsPerPage));
       setError(null);
     } catch (err) {
       console.error('Error fetching submissions:', err);
@@ -54,7 +58,36 @@ const Submissions = () => {
     } finally {
       setLoading(false);
     }
+  }, [page, itemsPerPage, sort, filter, dateRange]);
+
+  // Add sync function with queue-like behavior
+  const handleSync = async () => {
+    try {
+      setIsSyncing(true);
+      const token = localStorage.getItem('token');
+      
+      // Use the platform from filter if available, otherwise default to 'codeforces'
+      const platform = filter.platform || 'codeforces';
+      
+      // Request a larger number of submissions during sync
+      await axios.post(`/api/platforms/sync/${platform}`, { maxCount: 1000 }, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      // Refetch submissions after sync
+      await fetchSubmissions();
+      
+    } catch (err) {
+      console.error('Error syncing with platform:', err);
+      setError(`Failed to sync with ${filter.platform || 'platform'}. Please try again later.`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, [fetchSubmissions]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -68,6 +101,8 @@ const Submissions = () => {
 
   const handleSortChange = (e) => {
     setSort(e.target.value);
+    // We don't need to call fetchSubmissions here as it will be triggered by the useEffect
+    // that depends on the sort state via the fetchSubmissions dependency array
   };
 
   const handlePageChange = (newPage) => {
@@ -75,7 +110,8 @@ const Submissions = () => {
   };
 
   const handleApplyFilters = () => {
-    setPage(1); // Reset to first page when applying new filters
+    // Reset to page 1 when applying new filters
+    setPage(1);
     fetchSubmissions();
   };
 
@@ -110,14 +146,52 @@ const Submissions = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Fix the pagination display
+  const renderPaginationInfo = () => {
+    const startItem = (page - 1) * itemsPerPage + 1;
+    const endItem = Math.min(page * itemsPerPage, submissions.length + (page - 1) * itemsPerPage);
+    const totalItems = (totalPages * itemsPerPage) || 0;
+    
+    return (
+      <p className="text-sm text-gray-700">
+        Showing <span className="font-medium">{startItem}</span> to{' '}
+        <span className="font-medium">{endItem}</span> of{' '}
+        <span className="font-medium">{totalItems}</span> results
+      </p>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Submissions</h1>
-      
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-5">
-        <h2 className="text-lg font-medium text-gray-900 mb-3">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">My Submissions</h1>
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+          >
+            {isSyncing ? 'Syncing...' : 'Sync Now'}
+          </button>
+        </div>
+        
+        {/* Filters section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+            <select
+              id="platform"
+              name="platform"
+              value={filter.platform}
+              onChange={handleFilterChange}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="">All Platforms</option>
+              <option value="codeforces">Codeforces</option>
+              {/* Add other platforms as needed */}
+            </select>
+          </div>
+          
           <div>
             <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
@@ -134,20 +208,6 @@ const Submissions = () => {
               <option value="memory_limit_exceeded">Memory Limit Exceeded</option>
               <option value="runtime_error">Runtime Error</option>
               <option value="compilation_error">Compilation Error</option>
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
-            <select
-              id="platform"
-              name="platform"
-              value={filter.platform}
-              onChange={handleFilterChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-            >
-              <option value="">All Platforms</option>
-              <option value="codeforces">Codeforces</option>
             </select>
           </div>
           
@@ -190,10 +250,10 @@ const Submissions = () => {
           </div>
         </div>
         
-        <div className="mt-4">
+        <div className="md:self-end">
           <button
             onClick={handleApplyFilters}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
           >
             Apply Filters
           </button>
@@ -290,33 +350,9 @@ const Submissions = () => {
         {/* Pagination */}
         {!loading && !error && submissions.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
-                className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                  page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages}
-                className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                  page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Next
-              </button>
-            </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{(page - 1) * itemsPerPage + 1}</span> to{' '}
-                  <span className="font-medium">{Math.min(page * itemsPerPage, submissions.length)}</span> of{' '}
-                  <span className="font-medium">{submissions.length}</span> results
-                </p>
+                {renderPaginationInfo()}
               </div>
               <div>
                 <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
@@ -334,18 +370,17 @@ const Submissions = () => {
                   </button>
                   
                   {/* Page numbers */}
-                  {/* Page numbers */}
-{Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((num) => (
-  <button
-    key={num}
-    onClick={() => handlePageChange(num)}
-    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
-      page === num ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white text-gray-500 hover:bg-gray-50'
-    }`}
-  >
-    {num}
-  </button>
-))}
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => handlePageChange(num)}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+                        page === num ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
                   
                   <button
                     onClick={() => handlePageChange(page + 1)}

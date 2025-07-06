@@ -324,6 +324,88 @@ async function syncHackerRank(platformAccount) {
   return { problems: [], submissions: [] };
 }
 
+// Add a new route to get Codeforces stats
+router.get('/stats/codeforces', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    
+    // Find Codeforces account
+    const codeforcesAccount = user.platformAccounts.find(acc => acc.platform === 'codeforces');
+    
+    if (!codeforcesAccount) {
+      return res.status(404).json({ msg: 'Codeforces account not found' });
+    }
+    
+    // Get all submissions for this user from Codeforces
+    const submissions = await Submission.find({
+      user: req.user.id,
+      platform: 'codeforces'
+    }).populate('problem');
+    
+    // Get unique solved problems (only count accepted submissions)
+    const solvedProblems = new Set();
+    submissions.forEach(sub => {
+      if (sub.status === 'accepted') {
+        solvedProblems.add(sub.problem._id.toString());
+      }
+    });
+    
+    // Calculate today's solved problems
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaySolved = new Set();
+    
+    // Calculate this week's solved problems
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekSolved = new Set();
+    
+    // Calculate this month's solved problems
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthSolved = new Set();
+    
+    submissions.forEach(sub => {
+      if (sub.status === 'accepted') {
+        const problemId = sub.problem._id.toString();
+        const subTime = new Date(sub.submittedAt);
+        
+        if (subTime >= today) {
+          todaySolved.add(problemId);
+        }
+        
+        if (subTime >= weekStart) {
+          weekSolved.add(problemId);
+        }
+        
+        if (subTime >= monthStart) {
+          monthSolved.add(problemId);
+        }
+      }
+    });
+    
+    // Return stats
+    res.json({
+      problemsSolved: solvedProblems.size,
+      solvedToday: todaySolved.size,
+      solvedThisWeek: weekSolved.size,
+      solvedThisMonth: monthSolved.size,
+      totalSubmissions: submissions.length,
+      successRate: codeforcesAccount.stats?.successRate || 0
+    });
+    
+  } catch (err) {
+    console.error('Error fetching Codeforces stats:', err.message);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 // Export the router and sync functions separately
 module.exports = router;
 

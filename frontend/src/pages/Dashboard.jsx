@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Bar, Line } from 'react-chartjs-2';
-import { Chart, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import ProfilePopup from '../components/ProfilePopup';
 
-// Register Chart.js components
-Chart.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
+// Register Chart.js components including Filler
+Chart.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
 const Dashboard = () => {
   const token = localStorage.getItem('token');
@@ -37,67 +37,44 @@ const Dashboard = () => {
     setUser(updatedUser);
   };
 
-  // Function to fetch Codeforces statistics
+  // Add a sync function
+  const handleSync = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Sync Codeforces data
+      if (codeforcesUsername) {
+        await axios.post(`/api/platforms/sync/codeforces`, {}, {
+          headers: { 'x-auth-token': token }
+        });
+        
+        // Refetch user data and stats by triggering the useEffect
+        // We don't need to call fetchDashboardData since the useEffect will handle it
+        setLoading(false); // Set loading to false to allow the useEffect to run again
+      }
+    } catch (err) {
+      console.error('Error syncing with Codeforces:', err);
+      setError('Failed to sync with Codeforces. Please try again later.');
+      setLoading(false);
+    }
+  };
+
+  // Use the existing stats from the user's platform account instead of creating a new endpoint
   const fetchCodeforcesStats = async (username) => {
     try {
-      // Fetch user submissions from Codeforces
-      const submissionsResponse = await axios.get(`https://codeforces.com/api/user.status?handle=${username}`);
-      
-      if (submissionsResponse.data.status === 'OK') {
-        const submissions = submissionsResponse.data.result;
-        
-        // Get unique solved problems (only count accepted submissions)
-        const solvedProblems = new Set();
-        submissions.forEach(sub => {
-          if (sub.verdict === 'OK') {
-            const problemKey = `${sub.problem.contestId}-${sub.problem.index}`;
-            solvedProblems.add(problemKey);
-          }
-        });
-        
-        // Calculate today's solved problems
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todaySolved = new Set();
-        
-        // Calculate this week's solved problems
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        weekStart.setHours(0, 0, 0, 0);
-        const weekSolved = new Set();
-        
-        // Calculate this month's solved problems
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-        const monthSolved = new Set();
-        
-        submissions.forEach(sub => {
-          if (sub.verdict === 'OK') {
-            const problemKey = `${sub.problem.contestId}-${sub.problem.index}`;
-            const subTime = new Date(sub.creationTimeSeconds * 1000);
-            
-            if (subTime >= today) {
-              todaySolved.add(problemKey);
-            }
-            
-            if (subTime >= weekStart) {
-              weekSolved.add(problemKey);
-            }
-            
-            if (subTime >= monthStart) {
-              monthSolved.add(problemKey);
-            }
-          }
-        });
-        
-        // Update stats
-        setStats({
-          totalProblems: solvedProblems.size,
-          solvedToday: todaySolved.size,
-          solvedThisWeek: weekSolved.size,
-          solvedThisMonth: monthSolved.size
-        });
+      // We already have the user's platform accounts from the main useEffect
+      // Just use that data instead of making a new API call
+      if (user && user.platformAccounts) {
+        const cfAccount = user.platformAccounts.find(acc => acc.platform === 'codeforces');
+        if (cfAccount && cfAccount.stats) {
+          setStats({
+            totalProblems: cfAccount.stats.problemsSolved || 0,
+            solvedToday: cfAccount.stats.solvedToday || 0,
+            solvedThisWeek: cfAccount.stats.solvedThisWeek || 0,
+            solvedThisMonth: cfAccount.stats.solvedThisMonth || 0
+          });
+        }
       }
     } catch (err) {
       console.error('Error fetching Codeforces statistics:', err);
@@ -284,31 +261,23 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        
-        {/* Profile Button */}
-        <button 
-          onClick={() => setShowProfilePopup(true)}
-          className="flex items-center"
-        >
-          {user?.profilePicture ? (
-            <img 
-              src={user.profilePicture} 
-              alt={user.name || user.username} 
-              className="w-12 h-12 rounded-full object-cover border-2 border-white"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.style.display = 'none';
-                e.target.nextElementSibling.style.display = 'flex';
-              }}
-            />
-          ) : (
-            <div 
-              className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-xl text-indigo-800 font-medium border-2 border-white"
+        <div className="flex space-x-2">
+          {codeforcesUsername && (
+            <button
+              onClick={handleSync}
+              disabled={loading}
+              className="px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
-              {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
-            </div>
+              {loading ? 'Syncing...' : 'Sync Codeforces'}
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => setShowProfilePopup(true)}
+            className="px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            Profile
+          </button>
+        </div>
       </div>
       
       {/* Profile Popup */}
