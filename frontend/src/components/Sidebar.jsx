@@ -54,18 +54,7 @@ const Sidebar = () => {
         </div>
       </nav>
       
-      {/* User Section */}
-      <div className="absolute bottom-0 w-full border-t border-gray-200 p-4">
-        <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
-            U
-          </div>
-          <div className="ml-3">
-            <p className="text-sm font-medium text-gray-700">User Name</p>
-            <p className="text-xs text-gray-500">user@example.com</p>
-          </div>
-        </div>
-      </div>
+      {/* User Section - Removed */}
     </div>
   );
 };

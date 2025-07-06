@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { usersAPI } from '../services/api'; // Import the users API service
+import { Link } from 'react-router-dom';
+import { usersAPI } from '../services/api';
 
 const ProfilePopup = ({ user, onClose, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -215,7 +216,14 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                   )}
                 </div>
               </div>
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-between">
+                <Link
+                  to="/profile"
+                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                  onClick={onClose}
+                >
+                  View Full Profile
+                </Link>
                 <button
                   onClick={() => setIsEditing(true)}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"

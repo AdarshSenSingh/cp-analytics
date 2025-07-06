@@ -1,18 +1,31 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { analyticsAPI, platformsAPI } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Pie, Bar } from 'react-chartjs-2';
-import { Chart, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { flushSync } from 'react-dom';
+import { Bar, Pie } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  ArcElement,
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  Title, 
+  Tooltip, 
+  Legend 
+} from 'chart.js';
+import { analyticsAPI, platformsAPI } from '../services/api';
 
 // Register Chart.js components
-Chart.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  ArcElement,  // Required for Pie charts
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  Title, 
+  Tooltip, 
+  Legend
+);
 
 const Analytics = () => {
-  // Get token from auth context with fallback to localStorage
-  const auth = useAuth() || {};
-  const token = auth.token || localStorage.getItem('token');
+  const token = localStorage.getItem('token');
   
   const [summaryData, setSummaryData] = useState(null);
   const [topicsData, setTopicsData] = useState([]);
@@ -86,13 +99,57 @@ const Analytics = () => {
     }
   };
 
+  // Fetch data function to be reused
+  const fetchAnalyticsData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Fetch platform accounts
+      const accountsResponse = await platformsAPI.getAccounts();
+      setPlatformAccounts(accountsResponse.data.platformAccounts || []);
+      
+      // Prepare query params
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+      if (selectedPlatform) params.append('platform', selectedPlatform);
+      
+      // Fetch summary data
+      const summaryResponse = await analyticsAPI.getSummary(token, params);
+      setSummaryData(summaryResponse.data);
+      
+      // Fetch topics data
+      const topicsResponse = await analyticsAPI.getTopics(token, params);
+      setTopicsData(topicsResponse.data);
+      
+      // Fetch activity data
+      const activityResponse = await analyticsAPI.getActivity(token, params);
+      setActivityData(activityResponse.data);
+      
+      // Fetch topics mistakes data
+      const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
+      setTopicsMistakesData(mistakesResponse.data);
+      
+      // Fetch ratings data
+      const ratingsResponse = await analyticsAPI.getRatings(token, params);
+      setRatingsData(ratingsResponse.data);
+      
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error fetching analytics data:', err);
+      setError('Failed to load analytics data. Please try again later.');
+      setIsLoading(false);
+    }
+  }, [dateRange, selectedPlatform, token]);
+
   // Handle date range change without page refresh
-  const handleDateRangeChange = (newRange) => {
-    // Use flushSync to ensure state updates before re-fetching data
-    flushSync(() => {
-      setDateRange(newRange);
-    });
-    // Data will be fetched in the useEffect that depends on dateRange
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setDateRange(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePlatformChange = (e) => {
+    setSelectedPlatform(e.target.value);
   };
 
   // Add a sync function
@@ -106,32 +163,7 @@ const Analytics = () => {
       });
       
       // Refetch all data after sync
-      const accountsResponse = await platformsAPI.getAccounts();
-      setPlatformAccounts(accountsResponse.data.platformAccounts || []);
-      
-      // Prepare query params
-      const params = new URLSearchParams();
-      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
-      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
-      if (selectedPlatform) params.append('platform', selectedPlatform);
-      
-      // Refetch all data
-      const summaryResponse = await analyticsAPI.getSummary(token, params);
-      setSummaryData(summaryResponse.data);
-      
-      const topicsResponse = await analyticsAPI.getTopics(token, params);
-      setTopicsData(topicsResponse.data);
-      
-      const activityResponse = await analyticsAPI.getActivity(token, params);
-      setActivityData(activityResponse.data);
-      
-      const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
-      setTopicsMistakesData(mistakesResponse.data);
-      
-      const ratingsResponse = await analyticsAPI.getRatings(token, params);
-      setRatingsData(ratingsResponse.data);
-      
-      setIsLoading(false);
+      await fetchAnalyticsData();
     } catch (err) {
       console.error('Error syncing with Codeforces:', err);
       setError('Failed to sync with Codeforces. Please try again later.');
@@ -139,52 +171,10 @@ const Analytics = () => {
     }
   };
 
-  // Fetch data when component mounts or filters change
+  // Initial data fetch when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Fetch platform accounts
-        const accountsResponse = await platformsAPI.getAccounts();
-        setPlatformAccounts(accountsResponse.data.platformAccounts || []);
-        
-        // Prepare query params
-        const params = new URLSearchParams();
-        if (dateRange.startDate) params.append('startDate', dateRange.startDate);
-        if (dateRange.endDate) params.append('endDate', dateRange.endDate);
-        if (selectedPlatform) params.append('platform', selectedPlatform);
-        
-        // Fetch summary data
-        const summaryResponse = await analyticsAPI.getSummary(token, params);
-        setSummaryData(summaryResponse.data);
-        
-        // Fetch topics data
-        const topicsResponse = await analyticsAPI.getTopics(token, params);
-        setTopicsData(topicsResponse.data);
-        
-        // Fetch activity data
-        const activityResponse = await analyticsAPI.getActivity(token, params);
-        setActivityData(activityResponse.data);
-        
-        // Fetch topics mistakes data
-        const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
-        setTopicsMistakesData(mistakesResponse.data);
-        
-        // Fetch ratings data
-        const ratingsResponse = await analyticsAPI.getRatings(token, params);
-        setRatingsData(ratingsResponse.data);
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error fetching analytics data:', err);
-        setError('Failed to load analytics data. Please try again later.');
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [dateRange, selectedPlatform, token]);
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   useEffect(() => {
     if (topicsMistakesData.length > 0) {
@@ -284,38 +274,8 @@ const Analytics = () => {
       .map(([_, value]) => value)
   );
 
-  const handleDateChange = (e) => {
-    const { name, value } = e.target;
-    setDateRange(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePlatformChange = (e) => {
-    setSelectedPlatform(e.target.value);
-  };
-
-  const handleApplyFilters = () => {
-    // This will trigger the useEffect that depends on dateRange and selectedPlatform
-    // No need for page refresh
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <span className="block sm:inline">{error}</span>
-      </div>
-    );
-  }
-
-  // Find the selected platform account
-  const platformAccount = platformAccounts.find(acc => acc.platform.toLowerCase() === selectedPlatform);
+  // Get the platform account for the selected platform
+  const platformAccount = platformAccounts.find(acc => acc.platform === selectedPlatform);
 
   return (
     <div className="space-y-8">
@@ -323,15 +283,19 @@ const Analytics = () => {
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-lg shadow-lg">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Codeforces Analytics</h1>
-          {platformAccount && (
-            <button 
-              onClick={handleSync}
-              disabled={isLoading}
-              className="px-4 py-2 bg-white text-blue-700 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? 'Syncing...' : 'Sync Now'}
-            </button>
-          )}
+          <div className="flex items-center space-x-4">
+            {platformAccount && (
+              <button 
+                onClick={handleSync}
+                disabled={isLoading}
+                className="px-4 py-2 bg-white text-blue-700 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Syncing...' : 'Sync Now'}
+              </button>
+            )}
+            
+            {/* Add profile button here if needed */}
+          </div>
         </div>
         {platformAccount && (
           <div className="mt-2">
@@ -350,19 +314,18 @@ const Analytics = () => {
         <h2 className="text-lg font-medium text-gray-900 mb-4">Filters</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
             <select
+              id="platform"
+              name="platform"
               value={selectedPlatform}
               onChange={handlePlatformChange}
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
-              <option value="codeforces">Codeforces</option>
-              {platformAccounts.map((acc, idx) => (
-                acc.platform.toLowerCase() !== 'codeforces' && (
-                  <option key={idx} value={acc.platform.toLowerCase()}>
-                    {acc.platform.charAt(0).toUpperCase() + acc.platform.slice(1)}
-                  </option>
-                )
+              {platformAccounts.map(account => (
+                <option key={account.platform} value={account.platform}>
+                  {account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}
+                </option>
               ))}
             </select>
           </div>
@@ -389,15 +352,6 @@ const Analytics = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             />
           </div>
-        </div>
-        
-        <div className="mt-4">
-          <button
-            onClick={handleApplyFilters}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Apply Filters
-          </button>
         </div>
       </div>
       
