@@ -236,9 +236,11 @@ async function syncCodeforces(platformAccount) {
           platformSubmissionId: sub.id.toString(),
           platform: 'codeforces'
         });
-        
+        if (existingSubmission) {
+          console.log(`[SKIP] Submission already exists for user ${userId}, platformSubmissionId ${sub.id}, problem ${platformId}`);
+        }
         if (!existingSubmission) {
-          console.log(`Creating new submission for problem ${platformId}`);
+          console.log(`[CREATE] New submission for user ${userId}, platformSubmissionId ${sub.id}, problem ${platformId}`);
           // Create new submission - ENSURE user ID is set correctly
           const submission = new Submission({
             user: userId, // Use the user ID passed from the route handler

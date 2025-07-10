@@ -24,6 +24,7 @@ router.get('/', auth, async (req, res) => {
     
     // Build query object
     const query = { user: req.user.id };
+    console.log('[GET /api/submissions] User:', req.user.id, 'Query:', query);
     
     // Add filters if provided
     if (status) query.status = status;
@@ -64,10 +65,12 @@ router.get('/', auth, async (req, res) => {
     
     // Execute query
     const submissions = await submissionsQuery.exec();
+    console.log('[GET /api/submissions] Submissions found:', submissions.length);
     
     // Log the submissions for debugging
     if (submissions.length > 0) {
       console.log(`Found ${submissions.length} submissions`);
+      console.log('First submission:', JSON.stringify(submissions[0], null, 2));
       submissions.forEach((sub, i) => {
         console.log(`Submission ${i+1}: platform=${sub.platform}, problem=${sub.problem ? sub.problem.title : 'null'}`);
       });

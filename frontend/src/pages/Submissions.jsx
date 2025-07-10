@@ -49,7 +49,8 @@ const Submissions = () => {
         headers: { 'x-auth-token': token }
       });
       
-      setSubmissions(response.data.submissions);
+      console.log('API /api/submissions response:', response.data);
+setSubmissions(response.data.submissions);
       setTotalPages(Math.ceil(response.data.totalSubmissions / itemsPerPage));
       setError(null);
     } catch (err) {

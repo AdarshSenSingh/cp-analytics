@@ -17,6 +17,7 @@ router.get('/summary', auth, async (req, res) => {
     const query = { 
       user: req.user.id 
     };
+    console.log('[GET /api/analytics/summary] User:', req.user.id, 'Query:', query);
     
     // Add date range filter if provided
     if (startDate && endDate) {
@@ -33,6 +34,7 @@ router.get('/summary', auth, async (req, res) => {
     
     // Get all submissions by the user with filters
     const submissions = await Submission.find(query).populate('problem');
+    console.log('[GET /api/analytics/summary] Submissions found:', submissions.length);
     
     // Get all accepted submissions
     const acceptedSubmissions = submissions.filter(sub => sub.status === 'accepted');
@@ -157,6 +159,7 @@ router.get('/activity', auth, async (req, res) => {
     
     // Build query object
     const query = { user: req.user.id };
+    console.log('[GET /api/analytics/activity] User:', req.user.id, 'Query:', query);
     
     // Add date range filter if provided
     if (startDate && endDate) {
@@ -175,6 +178,7 @@ router.get('/activity', auth, async (req, res) => {
     const submissions = await Submission.find(query)
       .select('submittedAt status')
       .sort({ submittedAt: 1 });
+    console.log('[GET /api/analytics/activity] Submissions found:', submissions.length);
     
     // Group submissions by day
     const activityByDay = {};

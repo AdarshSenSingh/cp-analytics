@@ -105,13 +105,18 @@ const Dashboard = () => {
                 const cfResponse = await axios.get(`https://codeforces.com/api/user.info?handles=${cfAccount.username}`);
                 if (cfResponse.data.status === 'OK' && cfResponse.data.result.length > 0) {
                   setCodeforcesRating(cfResponse.data.result[0].rating);
-                  
                   // Fetch Codeforces statistics
                   await fetchCodeforcesStats(cfAccount.username);
+                } else {
+                  setCodeforcesRating(null);
                 }
               } catch (cfErr) {
+                setCodeforcesRating(null);
                 console.error('Error fetching Codeforces rating:', cfErr);
               }
+            } else {
+              setCodeforcesUsername('');
+              setCodeforcesRating(null);
             }
           } catch (userErr) {
             console.error('Error fetching user:', userErr);
