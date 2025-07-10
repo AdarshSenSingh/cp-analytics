@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Navbar = ({ onMenuClick }) => {
-  const { currentUser, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const isAuthenticated = !!localStorage.getItem('token');
+  const username = localStorage.getItem('username') || 'U';
+  const role = localStorage.getItem('role');
 
   const handleLogout = () => {
-    logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
     setDropdownOpen(false);
+    window.location = '/login'; // Ensures full session reset
   };
 
   return (
@@ -45,14 +50,8 @@ const Navbar = ({ onMenuClick }) => {
             </div>
           </div>
           <div className="flex items-center">
-            {currentUser ? (
+            {isAuthenticated ? (
               <>
-                <Link
-                  to="/submissions"
-                  className="mr-4 text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Submission History
-                </Link>
                 <div className="ml-3 relative">
                   <div>
                     <button
@@ -66,7 +65,7 @@ const Navbar = ({ onMenuClick }) => {
                       <span className="sr-only">Open user menu</span>
                       <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="text-indigo-800 font-medium">
-                          {currentUser.username?.charAt(0).toUpperCase() || 'U'}
+                          {username.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </button>
@@ -79,14 +78,6 @@ const Navbar = ({ onMenuClick }) => {
                       aria-labelledby="user-menu-button"
                       tabIndex="-1"
                     >
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        Your Profile
-                      </Link>
                       <button
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         role="menuitem"
@@ -122,4 +113,3 @@ const Navbar = ({ onMenuClick }) => {
 };
 
 export default Navbar;
-

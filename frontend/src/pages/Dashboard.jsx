@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 import { Bar, Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import ProfilePopup from '../components/ProfilePopup';
@@ -248,7 +249,9 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <>
+      <Navbar />
+      <div className="space-y-8">
       {/* Welcome Header with Profile Button */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white p-6 rounded-lg shadow-lg flex justify-between items-center">
         <div>
@@ -490,8 +493,9 @@ const Dashboard = () => {
         </>
       )}
     </div>
+    </>
   );
-};
+  };
 
 export default Dashboard;
 

@@ -18,7 +18,7 @@ router.post('/register', [
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { username, email, password, name } = req.body;
+  const { username, email, password, name, role } = req.body;
 
   try {
     // Check if user already exists
@@ -32,7 +32,8 @@ router.post('/register', [
       username,
       email,
       password,
-      name
+      name,
+      role: role === 'admin' ? 'admin' : 'user' // Only allow 'admin' if explicitly set, else 'user'
     });
 
     await user.save();
@@ -40,7 +41,8 @@ router.post('/register', [
     // Create and return JWT
     const payload = {
       user: {
-        id: user.id
+        id: user.id,
+        role: user.role
       }
     };
 
@@ -50,7 +52,7 @@ router.post('/register', [
       { expiresIn: process.env.JWT_EXPIRES_IN },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.json({ token, role: user.role });
       }
     );
   } catch (err) {
@@ -71,7 +73,7 @@ router.post('/login', [
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
   try {
     // Check if user exists
@@ -86,10 +88,16 @@ router.post('/login', [
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
+    // Check role match
+    if (role && user.role !== role) {
+      return res.status(400).json({ msg: 'Invalid user or role' });
+    }
+
     // Create and return JWT
     const payload = {
       user: {
-        id: user.id
+        id: user.id,
+        role: user.role
       }
     };
 
@@ -99,7 +107,7 @@ router.post('/login', [
       { expiresIn: process.env.JWT_EXPIRES_IN },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.json({ token, role: user.role });
       }
     );
   } catch (err) {
@@ -114,7 +122,7 @@ router.post('/login', [
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
-    res.json(user);
+    res.json({ ...user.toObject(), role: req.user.role });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
