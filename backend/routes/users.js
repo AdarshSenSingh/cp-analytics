@@ -131,9 +131,16 @@ router.get('/admin/users', auth, async (req, res) => {
     if (!req.user || req.user.role !== 'admin') {
       return res.status(403).json({ msg: 'Access denied: Admins only' });
     }
-    // Exclude password and sensitive fields
-    const users = await User.find({}, '-password');
-    res.json({ users });
+    // Exclude password and sensitive fields, and exclude admins
+    const users = await User.find({ role: { $ne: 'admin' } }, '-password');
+    // Attach codeforces rating if available
+    const usersWithRating = users.map(user => {
+      const userObj = user.toObject();
+      const cf = userObj.platformAccounts?.find(acc => acc.platform === 'codeforces');
+      userObj.codeforcesRating = cf && cf.stats && typeof cf.stats.rating !== 'undefined' ? cf.stats.rating : null;
+      return userObj;
+    });
+    res.json({ users: usersWithRating });
   } catch (err) {
     console.error('Admin fetch users error:', err.message);
     res.status(500).json({ msg: 'Server Error', error: err.message });

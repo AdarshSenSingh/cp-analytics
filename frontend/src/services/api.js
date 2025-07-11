@@ -52,7 +52,7 @@ export const usersAPI = {
       'Content-Type': 'multipart/form-data'
     }
   }),
-  getAllUsers: (token) => api.get('/admin/users', {
+  getAllUsers: (token) => api.get('/users/admin/users', {
     headers: { 'x-auth-token': token }
   })
 };

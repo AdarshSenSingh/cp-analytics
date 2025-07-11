@@ -52,7 +52,7 @@ const Navbar = ({ onMenuClick }) => {
           <div className="flex items-center">
             {isAuthenticated ? (
               <>
-                <div className="ml-3 relative">
+                <div className="ml-3 relative z-50">
                   <div>
                     <button
                       type="button"
@@ -65,7 +65,7 @@ const Navbar = ({ onMenuClick }) => {
                       <span className="sr-only">Open user menu</span>
                       <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="text-indigo-800 font-medium">
-                          {username.charAt(0).toUpperCase()}
+                          {role === 'admin' ? 'A' : username.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </button>
