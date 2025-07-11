@@ -203,6 +203,7 @@ router.get('/activity', auth, async (req, res) => {
       accepted: activityByDay[date].accepted
     }));
     
+    console.log('[API /api/analytics/summary] Returning:', JSON.stringify(activityData, null, 2));
     res.json(activityData);
   } catch (err) {
     console.error(err.message);
@@ -313,6 +314,7 @@ router.get('/topics', auth, async (req, res) => {
     // Sort by count (descending)
     topicsAnalysis.sort((a, b) => b.count - a.count);
     
+    console.log('[API /api/analytics/summary] Returning:', JSON.stringify(topicsAnalysis, null, 2));
     res.json(topicsAnalysis);
   } catch (err) {
     console.error(err.message);
@@ -358,6 +360,7 @@ router.get('/recommendations', auth, async (req, res) => {
       .limit(10)
       .sort({ acceptanceRate: -1 });
     
+    console.log('[API /api/analytics/summary] Returning:', JSON.stringify(recommendations, null, 2));
     res.json(recommendations);
   } catch (err) {
     console.error(err.message);
@@ -424,6 +427,7 @@ router.get('/topics-mistakes', auth, async (req, res) => {
     // Sort by mistake count (descending)
     problemsMistakesAnalysis.sort((a, b) => b.mistakeCount - a.mistakeCount);
     
+    console.log('[API /api/analytics/summary] Returning:', JSON.stringify(problemsMistakesAnalysis, null, 2));
     res.json(problemsMistakesAnalysis);
   } catch (err) {
     console.error(err.message);
@@ -511,6 +515,7 @@ router.get('/ratings', auth, async (req, res) => {
       else ratingRanges.unknown += 1;
     });
     
+    console.log('[API /api/analytics/summary] Returning:', JSON.stringify(ratingRanges, null, 2));
     res.json(ratingRanges);
   } catch (err) {
     console.error(err.message);

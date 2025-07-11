@@ -123,4 +123,21 @@ router.post('/profile/picture', auth, upload.single('profilePicture'), async (re
   }
 });
 
+// @route   GET api/admin/users
+// @desc    Get all users (admin only)
+// @access  Private/Admin
+router.get('/admin/users', auth, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied: Admins only' });
+    }
+    // Exclude password and sensitive fields
+    const users = await User.find({}, '-password');
+    res.json({ users });
+  } catch (err) {
+    console.error('Admin fetch users error:', err.message);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
+  }
+});
+
 module.exports = router;

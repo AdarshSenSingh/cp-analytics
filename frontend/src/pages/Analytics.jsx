@@ -107,33 +107,32 @@ const Analytics = () => {
       // Fetch platform accounts
       const accountsResponse = await platformsAPI.getAccounts();
       setPlatformAccounts(accountsResponse.data.platformAccounts || []);
-      
+      console.log('[Analytics] Platform accounts:', accountsResponse.data);
       // Prepare query params
       const params = new URLSearchParams();
       if (dateRange.startDate) params.append('startDate', dateRange.startDate);
       if (dateRange.endDate) params.append('endDate', dateRange.endDate);
       if (selectedPlatform) params.append('platform', selectedPlatform);
-      
       // Fetch summary data
       const summaryResponse = await analyticsAPI.getSummary(token, params);
       setSummaryData(summaryResponse.data);
-      
+      console.log('[Analytics] API /api/analytics/summary response:', summaryResponse.data);
       // Fetch topics data
       const topicsResponse = await analyticsAPI.getTopics(token, params);
       setTopicsData(topicsResponse.data);
-      
+      console.log('[Analytics] API /api/analytics/topics response:', topicsResponse.data);
       // Fetch activity data
       const activityResponse = await analyticsAPI.getActivity(token, params);
       setActivityData(activityResponse.data);
-      
+      console.log('[Analytics] API /api/analytics/activity response:', activityResponse.data);
       // Fetch topics mistakes data
       const mistakesResponse = await analyticsAPI.getTopicsMistakes(token, params);
       setTopicsMistakesData(mistakesResponse.data);
-      
+      console.log('[Analytics] API /api/analytics/topics-mistakes response:', mistakesResponse.data);
       // Fetch ratings data
       const ratingsResponse = await analyticsAPI.getRatings(token, params);
       setRatingsData(ratingsResponse.data);
-      
+      console.log('[Analytics] API /api/analytics/ratings response:', ratingsResponse.data);
       setIsLoading(false);
     } catch (err) {
       console.error('Error fetching analytics data:', err);

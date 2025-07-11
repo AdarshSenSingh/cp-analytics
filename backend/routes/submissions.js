@@ -25,6 +25,12 @@ router.get('/', auth, async (req, res) => {
     // Build query object
     const query = { user: req.user.id };
     console.log('[GET /api/submissions] User:', req.user.id, 'Query:', query);
+      // Extra debug: count all submissions and print a few
+      const allSubmissions = await Submission.find({});
+      console.log(`[DEBUG] Total submissions in DB: `);
+      if (allSubmissions.length > 0) {
+        console.log('[DEBUG] Example submission user IDs:', allSubmissions.slice(0, 3).map(s => s.user));
+      }
     
     // Add filters if provided
     if (status) query.status = status;
@@ -81,12 +87,14 @@ router.get('/', auth, async (req, res) => {
     // Get total count for pagination
     const total = await Submission.countDocuments(query);
     
-    res.json({
+    const responseData = {
       submissions,
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
       totalSubmissions: total
-    });
+    };
+    console.log('[API /api/submissions] Returning:', JSON.stringify(responseData, null, 2));
+    res.json(responseData);
   } catch (err) {
     console.error('Error fetching submissions:', err.message);
     res.status(500).send('Server error');
