@@ -1,20 +1,47 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
-import ProfilePopup from '../components/ProfilePopup';
+
 
 Chart.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
 const Dashboard = () => {
+
+  useEffect(() => {
+    setTip(tips[Math.floor(Math.random() * tips.length)]);
+  }, []);
+
+  const [kpis, setKpis] = useState({
+    currentRating: 'N/A',
+    maxRating: 'N/A',
+    bestRank: 'N/A',
+    streak: 0,
+    avgSolveTime: 'N/A',
+    wrongRate: 'N/A',
+  });
+ 
+  const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [user, setUser] = useState(null);
-  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [tip, setTip] = useState('');
+  const tips = [
+    "Tip of the day: Practice makes perfect: solve at least one problem every day!",
+    "Tip of the day: Read problem statements carefully before coding.",
+    "Tip of the day: Did you know? You can optimize your code by reducing time complexity!",
+    "Tip of the day: Don't be afraid to ask for help when you need it.",
+    "Tip of the day: Don't forget to check out the community forums for help and support.",
+    "Tip of the day: Keep practicing and improving your skills!",
+    "Tip of the day: Don't be afraid to ask for help"
+  ];
   const [stats, setStats] = useState(null);
   const [submissionActivity, setSubmissionActivity] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [showProfilePopup,setShowProfilePopup]=useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,18 +52,42 @@ const Dashboard = () => {
 
   // Fetch all dashboard data
   useEffect(() => {
+    // The main dashboard data fetcher must be async
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // User info
+        // Fetch user info
         const userRes = await axios.get('/api/auth/me', { headers: { 'x-auth-token': token } });
         setUser(userRes.data);
 
-        // Stats (from platform accounts or a dedicated endpoint)
+        // Fetch Codeforces KPIs
+        const cfAccount = userRes.data.platformAccounts?.find(acc => acc.platform === 'codeforces');
+        if (cfAccount) {
+          try {
+            // Get Codeforces user info
+            const cfInfoRes = await axios.get('https://codeforces.com/api/user.info', { params: { handles: cfAccount.username } });
+            if (cfInfoRes.data.status === 'OK') {
+              const cfUser = cfInfoRes.data.result[0];
+              // Get backend stats for streak, attempts
+              const cfStatsRes = await axios.get('/api/platforms/stats/codeforces', { headers: { 'x-auth-token': token } });
+              setKpis({
+                currentRating: cfUser.rating || 'N/A',
+                maxRating: cfUser.maxRating || 'N/A',
+                bestRank: cfUser.rank || 'N/A',
+                streak: cfStatsRes.data.solvedToday || 0,
+                avgSolveTime: cfStatsRes.data.averageAttemptsPerProblem?.toFixed(2) || 'N/A',
+                wrongRate: cfStatsRes.data.successRate != null ? `%` : 'N/A'
+              });
+            }
+          } catch (e) {
+            console.error('Error fetching Codeforces KPIs:', e);
+          }
+        }
+
+        // Fetch aggregated stats
         let statsData = null;
         if (userRes.data.platformAccounts && userRes.data.platformAccounts.length > 0) {
-          // Example: aggregate stats from all platforms
           statsData = userRes.data.platformAccounts.reduce((acc, accObj) => {
             if (accObj.stats) {
               acc.totalProblems += accObj.stats.problemsSolved || 0;
@@ -49,29 +100,23 @@ const Dashboard = () => {
         }
         setStats(statsData);
 
-        // Submission activity (for chart)
+        // Submission activity
         const activityParams = new URLSearchParams();
         if (activityDateRange.startDate) activityParams.append('startDate', activityDateRange.startDate);
         if (activityDateRange.endDate) activityParams.append('endDate', activityDateRange.endDate);
-        const activityRes = await axios.get(`/api/analytics/activity?${activityParams.toString()}`, {
-          headers: { 'x-auth-token': token }
-        });
+        const activityRes = await axios.get(`/api/analytics/activity?`, { headers: { 'x-auth-token': token } });
         setSubmissionActivity(activityRes.data || []);
 
         // Recent submissions
-        const submissionsRes = await axios.get('/api/submissions?limit=5', {
-          headers: { 'x-auth-token': token }
-        });
+        const submissionsRes = await axios.get('/api/submissions?limit=5', { headers: { 'x-auth-token': token } });
         setRecentActivity(submissionsRes.data?.submissions || []);
 
-        // Recommendations (if your backend provides this endpoint)
+        // Recommendations
         try {
-          const recRes = await axios.get('/api/recommendations', {
-            headers: { 'x-auth-token': token }
-          });
+          const recRes = await axios.get('/api/recommendations', { headers: { 'x-auth-token': token } });
           setRecommendations(recRes.data?.recommendations || []);
-        } catch (recErr) {
-          setRecommendations([]); // If not available, just show nothing
+        } catch {
+          setRecommendations([]);
         }
       } catch (err) {
         setError('Failed to load dashboard data. Please try again later.');
@@ -80,6 +125,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
+    // eslint-disable-next-line
   }, [token, activityDateRange.startDate, activityDateRange.endDate]);
 
   const handleDateRangeChange = (e) => {
@@ -108,9 +154,8 @@ const Dashboard = () => {
 
   return (
     <>
-      <Navbar />
       <div className="space-y-8">
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white p-6 rounded-lg shadow-lg flex justify-between items-center">
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white p-6 rounded-lg shadow-lg flex justify-between items-center sticky top-0 z-10">
           <div>
             <h1 className="text-3xl font-bold">
               Welcome, {user?.name || 'Coder'}!
@@ -121,24 +166,63 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowProfilePopup(true)}
-              className="px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              Profile
-            </button>
+          <div className="relative">
+    <button
+      onClick={() => setShowMenu(!showMenu)}
+      className="h-8 w-8 rounded-full bg-white flex items-center justify-center"
+    >
+      <span className="text-indigo-600 font-medium">
+        {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+      </span>
+    </button>
+    {showMenu && (
+      <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20">
+        <button
+          onClick={() => { navigate('/profile'); setShowMenu(false); }}
+          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        >
+          View Profile
+        </button>
+        <button
+          onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('username'); localStorage.removeItem('role'); window.location = '/' }}
+          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        >
+          Sign out
+        </button>
+      </div>
+    )}
+  </div>
+        </div>
+        {/* Tip and Motivational Tip & KPIs */}
+        <div className="px-6 space-y-4 mb-4">
+          <div className="text-sm italic text-gray-200">“{tip}”</div>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.currentRating}</div>
+              <div className="text-xs text-gray-600">Current Rating</div>
+            </div>
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.maxRating}</div>
+              <div className="text-xs text-gray-600">Max Rating</div>
+            </div>
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.bestRank}</div>
+              <div className="text-xs text-gray-600">Best Rank</div>
+            </div>
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.streak} days</div>
+              <div className="text-xs text-gray-600">Current Streak</div>
+            </div>
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.avgSolveTime}</div>
+              <div className="text-xs text-gray-600">Avg Solve Time</div>
+            </div>
+            <div className="bg-white bg-opacity-80 p-2 rounded text-center">
+              <div className="text-xl font-bold text-gray-900">{kpis.wrongRate}</div>
+              <div className="text-xs text-gray-600">Wrong Submission Rate</div>
+            </div>
           </div>
         </div>
-
-        {showProfilePopup && (
-          <ProfilePopup
-            user={user}
-            onClose={() => setShowProfilePopup(false)}
-            onUpdate={handleProfileUpdate}
-          />
-        )}
-
         {loading ? (
           <div className="text-center py-10">
             <p className="text-gray-500">Loading dashboard data...</p>
@@ -305,7 +389,5 @@ const Dashboard = () => {
         )}
       </div>
     </>
-  );
-};
-
+  )};
 export default Dashboard;

@@ -327,6 +327,7 @@ async function syncHackerRank(platformAccount) {
 }
 
 // Add a new route to get Codeforces stats
+// This route now returns rating, maxRating, rank, and submission stats
 router.get('/stats/codeforces', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -410,8 +411,4 @@ router.get('/stats/codeforces', auth, async (req, res) => {
 
 // Export the router and sync functions separately
 module.exports = router;
-
-// Export the sync functions for use in the scheduler
 module.exports.syncCodeforces = syncCodeforces;
-// Remove other sync functions
-// module.exports.syncHackerRank = syncHackerRank;
