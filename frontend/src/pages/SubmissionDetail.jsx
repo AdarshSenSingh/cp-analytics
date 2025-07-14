@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { getAIResponse } from '../services/ai';
 
 const SubmissionDetail = () => {
   const { id } = useParams();
@@ -16,6 +17,11 @@ const SubmissionDetail = () => {
   const [timeComplexity, setTimeComplexity] = useState('');
   const [spaceComplexity, setSpaceComplexity] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // AI analysis for wrong submissions
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     fetchSubmission();
@@ -157,6 +163,22 @@ const SubmissionDetail = () => {
     );
   }
 
+  // AI analysis handler
+  const handleAICheck = async () => {
+    setAiLoading(true);
+    setAiError('');
+    setAiFeedback('');
+    try {
+      const prompt = `Analyze the following code for the problem \"${submission.problem.title}\". The verdict was \"${submission.status}\".\n\nCode:\n${submission.code}\n\nExplain what is likely wrong, suggest improvements, and recommend 2-3 online resources (with links) to help fix the issue.`;
+      const response = await getAIResponse(prompt, { max_tokens: 350 });
+      setAiFeedback(response);
+    } catch (err) {
+      setAiError('Failed to get AI feedback. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -227,10 +249,20 @@ const SubmissionDetail = () => {
       
       {/* Code */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
             Solution Code
           </h3>
+          {/* AI check for wrong submissions */}
+          {submission.status !== 'accepted' && (
+            <button
+              onClick={handleAICheck}
+              className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+              disabled={aiLoading}
+            >
+              {aiLoading ? 'Analyzing...' : 'Check what is wrong (AI)'}
+            </button>
+          )}
         </div>
         <div className="border-t border-gray-200 overflow-hidden">
           <SyntaxHighlighter 
@@ -247,6 +279,25 @@ const SubmissionDetail = () => {
             {submission.code || '// No code available for this submission'}
           </SyntaxHighlighter>
         </div>
+        {/* AI feedback section */}
+        {submission.status !== 'accepted' && (
+          <div className="p-4 border-t border-gray-100">
+            {aiError && <div className="text-red-500 text-sm mb-2">{aiError}</div>}
+            {aiFeedback && (
+              <div className="bg-indigo-50 p-3 rounded text-sm whitespace-pre-wrap">
+                <strong className="block text-indigo-700 mb-1">AI Feedback & Resources:</strong>
+                {aiFeedback.split(/\n(?=https?:\/\/)/g).map((part, idx) => {
+                  // If part starts with a link, render as link
+                  const urlMatch = part.match(/(https?:\/\/[^\s]+)/);
+                  if (urlMatch) {
+                    return <div key={idx}><a href={urlMatch[1]} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">{urlMatch[1]}</a>{part.replace(urlMatch[1], '')}</div>;
+                  }
+                  return <div key={idx}>{part}</div>;
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Notes and Analysis */}

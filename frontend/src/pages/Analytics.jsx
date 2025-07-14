@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getAIResponse } from '../services/ai';
 import axios from 'axios';
 import { Bar, Pie } from 'react-chartjs-2';
 import { 
@@ -25,6 +26,23 @@ ChartJS.register(
 );
 
 const Analytics = () => {
+  // AI Suggestion State
+  const [aiSuggestions, setAiSuggestions] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  // Handler for AI suggestions for similar problems
+  const handleGetSimilar = async (mistakeProblem) => {
+    setLoadingAI(true);
+    setAiSuggestions("");
+    const prompt = `Suggest 3 Codeforces problems similar to "${mistakeProblem.title}" that help avoid mistakes like "${mistakeProblem.errorType}".`;
+    try {
+      const aiText = await getAIResponse(prompt);
+      setAiSuggestions(aiText);
+    } catch (e) {
+      setAiSuggestions("AI suggestion failed. Please try again later.");
+    }
+    setLoadingAI(false);
+  };
   const token = localStorage.getItem('token');
   
   const [summaryData, setSummaryData] = useState(null);

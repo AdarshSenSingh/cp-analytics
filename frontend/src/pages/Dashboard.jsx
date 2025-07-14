@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import AIImprovementModal from '../components/AIImprovementModal';
 
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
@@ -43,6 +44,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [showProfilePopup,setShowProfilePopup]=useState(false);
   const [recommendations, setRecommendations] = useState([]);
+  const [showAIImprovement, setShowAIImprovement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activityDateRange, setActivityDateRange] = useState({
@@ -166,32 +168,40 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-          <div className="relative">
-    <button
-      onClick={() => setShowMenu(!showMenu)}
-      className="h-8 w-8 rounded-full bg-white flex items-center justify-center"
-    >
-      <span className="text-indigo-600 font-medium">
-        {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
-      </span>
-    </button>
-    {showMenu && (
-      <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20">
-        <button
-          onClick={() => { navigate('/profile'); setShowMenu(false); }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-        >
-          View Profile
-        </button>
-        <button
-          onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('username'); localStorage.removeItem('role'); window.location = '/' }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-        >
-          Sign out
-        </button>
-      </div>
-    )}
-  </div>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={() => setShowAIImprovement(true)}
+              className="mb-2 px-4 py-2 bg-white text-indigo-700 rounded-md shadow hover:bg-indigo-50 border border-indigo-200 text-sm font-semibold"
+            >
+              Want to improve ratings?
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="h-8 w-8 rounded-full bg-white flex items-center justify-center"
+              >
+                <span className="text-indigo-600 font-medium">
+                  {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                </span>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20">
+                  <button
+                    onClick={() => { navigate('/profile'); setShowMenu(false); }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    View Profile
+                  </button>
+                  <button
+                    onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('username'); localStorage.removeItem('role'); window.location = '/' }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         {/* Tip and Motivational Tip & KPIs */}
         <div className="px-6 space-y-4 mb-4">
@@ -388,6 +398,7 @@ const Dashboard = () => {
           </>
         )}
       </div>
+      <AIImprovementModal open={showAIImprovement} onClose={() => setShowAIImprovement(false)} />
     </>
   )};
 export default Dashboard;
