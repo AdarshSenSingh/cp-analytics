@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AIAssistantModal from '../components/AIAssistantModal';
+import CodeViewModal from '../components/CodeViewModal';
 import axios from 'axios';
+import { fetchCodeforcesSubmissionCode } from '../services/codeforces';
 import { Link } from 'react-router-dom';
+// No navigation to /submissions/:id for code view, only modal is used
 
 const Submissions = () => {
   const [submissions, setSubmissions] = useState([]);
@@ -19,6 +23,97 @@ const Submissions = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isSyncing, setIsSyncing] = useState(false);
   const itemsPerPage = 10;
+
+  // Code View Modal state
+  const [codeViewOpen, setCodeViewOpen] = useState(false);
+  const [codeViewSubmission, setCodeViewSubmission] = useState(null);
+  const [codeViewCode, setCodeViewCode] = useState('');
+  const [codeViewLoading, setCodeViewLoading] = useState(false);
+  const [codeViewError, setCodeViewError] = useState('');
+
+  // AI Assistant Modal state
+  const [aiModalOpen, setAIModalOpen] = useState(false);
+  const [aiModalSubmission, setAIModalSubmission] = useState(null);
+  const [aiModalCode, setAIModalCode] = useState('');
+  const [aiModalLoading, setAIModalLoading] = useState(false);
+  const [aiModalError, setAIModalError] = useState('');
+
+  // Helper to determine if a submission is a Codeforces remote submission
+  const isCodeforcesRemote = (submission) => {
+    return (
+      submission.platform === 'codeforces' &&
+      (!submission.code || submission.code.trim() === '') &&
+      submission.remote && submission.remote.submissionId && submission.remote.contestId && submission.remote.handle
+    );
+  };
+
+  // Code View Modal logic
+  const handleOpenCodeView = async (submission) => {
+    console.log('[CodeView] Submission:', submission);
+    setCodeViewSubmission(submission);
+    setCodeViewOpen(true);
+    setCodeViewError('');
+    setCodeViewCode('');
+    if (isCodeforcesRemote(submission)) {
+      setCodeViewLoading(true);
+      try {
+        const code = await fetchCodeforcesSubmissionCode(
+          submission.remote.handle,
+          submission.remote.contestId,
+          submission.remote.submissionId
+        );
+        setCodeViewCode(code);
+      } catch (err) {
+        setCodeViewError('Failed to fetch code from Codeforces: ' + (err.message || err));
+      } finally {
+        setCodeViewLoading(false);
+      }
+    } else {
+      if (!submission.code || submission.code.trim() === '') {
+        setCodeViewError('No code available in local submission.');
+      }
+      setCodeViewCode(submission.code || '');
+    }
+  };
+  const handleCloseCodeView = () => {
+    setCodeViewOpen(false);
+    setCodeViewSubmission(null);
+    setCodeViewCode('');
+    setCodeViewError('');
+    setCodeViewLoading(false);
+  };
+
+  // AI Assistant Modal logic
+  const handleOpenAIModal = async (submission) => {
+    setAIModalSubmission(submission);
+    setAIModalOpen(true);
+    setAIModalError('');
+    setAIModalCode('');
+    if (isCodeforcesRemote(submission)) {
+      setAIModalLoading(true);
+      try {
+        const code = await fetchCodeforcesSubmissionCode(
+          submission.remote.handle,
+          submission.remote.contestId,
+          submission.remote.submissionId
+        );
+        setAIModalCode(code);
+      } catch (err) {
+        setAIModalError('Failed to fetch code from Codeforces.');
+      } finally {
+        setAIModalLoading(false);
+      }
+    } else {
+      setAIModalCode(submission.code || '');
+    }
+  };
+  const handleCloseAIModal = () => {
+    setAIModalOpen(false);
+    setAIModalSubmission(null);
+    setAIModalCode('');
+    setAIModalError('');
+    setAIModalLoading(false);
+  };
 
   // Create a reusable fetch function with useCallback
   const fetchSubmissions = useCallback(async () => {
@@ -302,6 +397,9 @@ setSubmissions(response.data.submissions);
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    AI Assistant
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -332,14 +430,71 @@ setSubmissions(response.data.submissions);
                       {formatDate(submission.submittedAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link to={`/submissions/${submission._id}`} className="text-indigo-600 hover:text-indigo-900 mr-3">
-                        View
-                      </Link>
+                      {submission.platform === 'codeforces' ? (
+  <a
+    href={`https://codeforces.com/contest/${submission.remote?.contestId || submission.problem?.contestId}/submission/${submission.remote?.submissionId || submission.platformSubmissionId}`}
+    className="text-indigo-600 hover:text-indigo-900 mr-3"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    View 
+  </a>
+) : (
+  <button
+    className="text-indigo-600 hover:text-indigo-900 mr-3"
+    onClick={() => handleOpenCodeView(submission)}
+    type="button"
+  >
+    View
+  </button>
+) }
                       {submission.status !== 'accepted' && (
                         <Link to={`/problems/${submission.problem._id}`} className="text-green-600 hover:text-green-900">
                           Retry
                         </Link>
                       )}
+                    </td>
+                    {/* AI Assistant Modal trigger and logic will be here */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+  className={`bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 text-xs font-medium `}
+  onClick={async () => {
+    if (submission.platform === 'codeforces') {
+      setAIModalSubmission(submission);
+      setAIModalOpen(false);
+      setAIModalError('');
+      setAIModalCode('');
+      setAIModalLoading(true);
+      try {
+        // Try to get handle from remote or fallback
+        const handle = submission.remote?.handle || 'your_handle';
+        const contestId = submission.remote?.contestId || submission.problem?.contestId;
+        const submissionId = submission.remote?.submissionId || submission.platformSubmissionId;
+        if (!contestId || !submissionId) {
+          setAIModalError('Missing contestId or submissionId for this Codeforces submission.');
+          setAIModalOpen(true);
+          setAIModalLoading(false);
+          return;
+        }
+        const code = await fetchCodeforcesSubmissionCode(handle, contestId, submissionId);
+        setAIModalCode(code);
+        // Save code to MongoDB for future use
+        await axios.put(`/api/submissions/`, { code });
+        setAIModalOpen(true);
+      } catch (err) {
+        setAIModalError('Failed to fetch code from Codeforces.');
+        setAIModalOpen(true);
+      } finally {
+        setAIModalLoading(false);
+      }
+    } else {
+      handleOpenAIModal(submission);
+    }
+  }}
+  disabled={aiModalLoading && aiModalSubmission?._id === submission._id}
+>
+  {aiModalLoading && aiModalSubmission?._id === submission._id ? 'Loading...' : 'Help'}
+</button>
                     </td>
                   </tr>
                 ))}
@@ -401,6 +556,30 @@ setSubmissions(response.data.submissions);
           </div>
         )}
       </div>
+      {/* Code View Modal */}
+      {codeViewSubmission && (
+        <CodeViewModal
+            open={codeViewOpen}
+            onClose={handleCloseCodeView}
+            code={codeViewCode}
+            language={codeViewSubmission.language}
+            problemTitle={codeViewSubmission.problem?.title || ''}
+            loading={codeViewLoading}
+            error={codeViewError}
+          />
+      )}
+      {/* AI Assistant Modal */}
+      {aiModalSubmission && (
+        <AIAssistantModal
+          open={aiModalOpen}
+          onClose={handleCloseAIModal}
+          code={aiModalCode}
+          language={aiModalSubmission.language}
+          problemTitle={aiModalSubmission.problem?.title || ''}
+          loading={aiModalLoading}
+          error={aiModalError}
+        />
+      )}
     </div>
   );
 };

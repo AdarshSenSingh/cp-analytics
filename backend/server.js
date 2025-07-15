@@ -43,6 +43,7 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/platforms', platformRoutes);
 app.use('/api/submissions', submissionsRoutes);
+app.use('/api/codeforces', require('./routes/codeforces'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

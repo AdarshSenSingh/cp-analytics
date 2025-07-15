@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchCodeforcesSubmissionCode } from '../services/codeforces';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +9,7 @@ import { getAIResponse } from '../services/ai';
 
 const SubmissionDetail = () => {
   const { id } = useParams();
-  const { token, userId } = useAuth();
+  const { token, userId, currentUser } = useAuth();
   const navigate = useNavigate();
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,40 +31,61 @@ const SubmissionDetail = () => {
   const fetchSubmission = async () => {
     try {
       setLoading(true);
-      
-      console.log(`Fetching submission with ID: ${id}`);
-      console.log(`Current user ID: ${userId}`);
-      
-      const response = await axios.get(`/api/submissions/${id}`, {
+      console.log(`Fetching submission with ID: `);
+      console.log(`Current user ID: `);
+      const response = await axios.get(`/api/submissions/`, {
         headers: { 'x-auth-token': token }
       });
-      
       console.log('Submission data:', response.data);
-      
       // Convert both to strings for proper comparison
       const submissionUserId = response.data.user.toString();
       const currentUserId = userId.toString();
-      
-      console.log(`Comparing submission user: ${submissionUserId} with current user: ${currentUserId}`);
-      
+      console.log(`Comparing submission user:  with current user: `);
       if (submissionUserId !== currentUserId) {
         console.error('Authorization error: Submission belongs to another user');
         setError('You are not authorized to view this submission');
         setSubmission(null);
         return;
       }
-      
-      setSubmission(response.data);
-      setNotes(response.data.notes || '');
-      setTimeComplexity(response.data.timeComplexity || '');
-      setSpaceComplexity(response.data.spaceComplexity || '');
+      let sub = response.data;
+      // If code is missing, try to fetch from Codeforces
+      if (
+  sub.platform === 'codeforces' &&
+  !sub.code &&
+  sub.platformSubmissionId &&
+  sub.problem && sub.problem.contestId
+) {
+  // Try to get handle from user profile
+  let handle = null;
+  if (currentUser && Array.isArray(currentUser.platformAccounts)) {
+    const cfAcc = currentUser.platformAccounts.find(acc => acc.platform === 'codeforces');
+    if (cfAcc && cfAcc.username) handle = cfAcc.username;
+  }
+  if (!handle) handle = 'your_handle'; // fallback/placeholder
+  if (!sub.problem.contestId || !sub.platformSubmissionId) {
+    sub.code = '// Missing contestId or submissionId for this Codeforces submission.';
+  } else {
+    try {
+      const code = await fetchCodeforcesSubmissionCode(handle, sub.problem.contestId, sub.platformSubmissionId);
+      sub.code = code;
     } catch (err) {
-      console.error('Error fetching submission:', err);
+      sub.code = '// Could not fetch code from Codeforces.';
+    }
+  }
+}       
+      } 
+      catch (err) {
+      setSubmission(sub);
+      setNotes(sub.notes || '');
+      setTimeComplexity(sub.timeComplexity || '');
+      setSpaceComplexity(sub.spaceComplexity || '');
+       console.error('Error fetching submission:', err);
       setError(err.response?.data?.msg || 'Failed to load submission details');
+     
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleSaveNotes = async () => {
     try {
@@ -202,14 +224,24 @@ const SubmissionDetail = () => {
               {submission.problem.platform} - {submission.problem.difficulty}
             </p>
           </div>
-          <a
-            href={submission.problem.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-          >
-            View Problem
-          </a>
+          <div className="flex gap-2">
+  <a
+    href={`https://codeforces.com/contest//submission/`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+  >
+    View
+  </a>
+  <a
+    href={`http://localhost:3000/problems/${submission.problem._id}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+  >
+    View
+  </a>
+</div>
         </div>
         <div className="border-t border-gray-200">
           <dl>
@@ -277,6 +309,26 @@ const SubmissionDetail = () => {
             }}
           >
             {submission.code || '// No code available for this submission'}
+{submission.platform === 'codeforces' && submission.platformSubmissionId && submission.problem && (
+  <div className="mt-2 text-xs text-gray-500">
+    <a
+      href={`https://codeforces.com/contest/${submission.problem.contestId}/submission/${submission.platformSubmissionId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 underline mr-2"
+    >
+      View
+    </a>
+    <a
+      href={`http://localhost:3000/problems/${submission.problem._id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-green-600 underline"
+    >
+      View
+    </a>
+  </div>
+)}
           </SyntaxHighlighter>
         </div>
         {/* AI feedback section */}

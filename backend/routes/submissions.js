@@ -156,6 +156,16 @@ router.post('/', [
       return res.status(404).json({ msg: 'Problem not found' });
     }
 
+    // Prune old submissions if user has more than 100
+    const userSubmissionCount = await Submission.countDocuments({ user: req.user.id });
+    if (userSubmissionCount >= 100) {
+      // Find and delete the oldest submissions (keep 99, add this one as 100)
+      const oldest = await Submission.find({ user: req.user.id }).sort({ submittedAt: 1 }).limit(userSubmissionCount - 99);
+      const idsToDelete = oldest.map(s => s._id);
+      if (idsToDelete.length > 0) {
+        await Submission.deleteMany({ _id: { $in: idsToDelete } });
+      }
+    }
     // Create new submission
     const newSubmission = new Submission({
       user: req.user.id,
@@ -173,9 +183,7 @@ router.post('/', [
       notes: req.body.notes,
       aiAnalysis: req.body.aiAnalysis,
       submittedAt: req.body.submittedAt || Date.now()
-    });
-
-    const submission = await newSubmission.save();
+    }); submission = await newSubmission.save();
     
     // If submission is accepted, update user points
     if (req.body.status === 'accepted') {

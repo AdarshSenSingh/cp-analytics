@@ -7,6 +7,7 @@ import Problems from './pages/Problems';
 import Submissions from './pages/Submissions';
 import Analytics from './pages/Analytics';
 import Platforms from './pages/Platforms';
+import SubmissionDetail from './pages/SubmissionDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import './App.css';
@@ -30,6 +31,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/problems" element={<Problems />} />
           <Route path="/submissions" element={<Submissions />} />
+           <Route path="/submissions/:id" element={<SubmissionDetail />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platforms" element={<Platforms />} />
         </Route>
