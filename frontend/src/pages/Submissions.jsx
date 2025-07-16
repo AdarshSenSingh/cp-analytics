@@ -40,15 +40,26 @@ const Submissions = () => {
 
   // Helper to determine if a submission is a Codeforces remote submission
   const isCodeforcesRemote = (submission) => {
-    return (
-      submission.platform === 'codeforces' &&
-      (!submission.code || submission.code.trim() === '') &&
-      submission.remote && submission.remote.submissionId && submission.remote.contestId && submission.remote.handle
-    );
-  };
+  return (
+    submission.platform === 'codeforces' &&
+    (!submission.code || submission.code.trim() === '') &&
+    submission.remote &&
+    submission.remote.submissionId &&
+    submission.remote.contestId &&
+    submission.remote.handle
+  );
+};
 
   // Code View Modal logic
   const handleOpenCodeView = async (submission) => {
+    console.log('[DEBUG] handleOpenCodeView called with submission:', submission);
+    const isRemote = isCodeforcesRemote(submission);
+    console.log('[DEBUG] isCodeforcesRemote:', isRemote);
+    if (submission.remote) {
+      console.log('[DEBUG] submission.remote:', submission.remote);
+    } else {
+      console.log('[DEBUG] submission.remote is undefined or null');
+    }
     console.log('[CodeView] Submission:', submission);
     setCodeViewSubmission(submission);
     setCodeViewOpen(true);
@@ -56,17 +67,27 @@ const Submissions = () => {
     setCodeViewCode('');
     if (isCodeforcesRemote(submission)) {
       setCodeViewLoading(true);
+      console.log('[DEBUG] setCodeViewLoading(true)');
       try {
+        if (!submission.remote.handle || !submission.remote.contestId || !submission.remote.submissionId) {
+          setCodeViewError('Cannot fetch code: missing contestId, submissionId, or handle. Please re-sync your account.');
+          setCodeViewLoading(false);
+      console.log('[DEBUG] setCodeViewLoading(false)');
+          return;
+        }
         const code = await fetchCodeforcesSubmissionCode(
           submission.remote.handle,
           submission.remote.contestId,
           submission.remote.submissionId
         );
         setCodeViewCode(code);
+        console.log('[DEBUG] Code fetched from Codeforces:', code);
       } catch (err) {
         setCodeViewError('Failed to fetch code from Codeforces: ' + (err.message || err));
+        console.error('[DEBUG] Error fetching code from Codeforces:', err);
       } finally {
         setCodeViewLoading(false);
+      console.log('[DEBUG] setCodeViewLoading(false)');
       }
     } else {
       if (!submission.code || submission.code.trim() === '') {
@@ -81,6 +102,7 @@ const Submissions = () => {
     setCodeViewCode('');
     setCodeViewError('');
     setCodeViewLoading(false);
+      console.log('[DEBUG] setCodeViewLoading(false)');
   };
 
   // AI Assistant Modal logic
@@ -92,6 +114,11 @@ const Submissions = () => {
     if (isCodeforcesRemote(submission)) {
       setAIModalLoading(true);
       try {
+        if (!submission.remote.handle || !submission.remote.contestId || !submission.remote.submissionId) {
+          setAIModalError('Cannot fetch code: missing contestId, submissionId, or handle. Please re-sync your account.');
+          setAIModalLoading(false);
+          return;
+        }
         const code = await fetchCodeforcesSubmissionCode(
           submission.remote.handle,
           submission.remote.contestId,
@@ -429,31 +456,44 @@ setSubmissions(response.data.submissions);
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(submission.submittedAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {submission.platform === 'codeforces' ? (
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+  {submission.status?.toLowerCase() !== 'accepted' ? (
+  <>
+    <a
+      href={`https://codeforces.com/contest/${submission.remote?.contestId || submission.problem?.contestId}/submission/${submission.remote?.submissionId || ''}`}
+      className="text-indigo-600 hover:text-indigo-900 mr-3"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      View
+    </a>
+    <button
+      className="text-green-600 hover:text-green-900"
+      type="button"
+      onClick={() =>
+        window.open(
+          `https://codeforces.com/contest/${submission.problem.contestId}/problem/${submission.problem.index}`,
+          '_blank',
+          'noopener,noreferrer'
+        )
+      }
+    >
+      Retry
+    </button>
+  </>
+) : (
   <a
-    href={`https://codeforces.com/contest/${submission.remote?.contestId || submission.problem?.contestId}/submission/${submission.remote?.submissionId || submission.platformSubmissionId}`}
-    className="text-indigo-600 hover:text-indigo-900 mr-3"
+    href={`https://codeforces.com/contest/${submission.remote?.contestId || submission.problem?.contestId}/submission/${submission.remote?.submissionId || ''}`}
+    className="text-indigo-600 hover:text-indigo-900"
     target="_blank"
     rel="noopener noreferrer"
   >
-    View 
-  </a>
-) : (
-  <button
-    className="text-indigo-600 hover:text-indigo-900 mr-3"
-    onClick={() => handleOpenCodeView(submission)}
-    type="button"
-  >
     View
-  </button>
-) }
-                      {submission.status !== 'accepted' && (
-                        <Link to={`/problems/${submission.problem._id}`} className="text-green-600 hover:text-green-900">
-                          Retry
-                        </Link>
-                      )}
-                    </td>
+  </a>
+)}
+
+</td>
+
                     {/* AI Assistant Modal trigger and logic will be here */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

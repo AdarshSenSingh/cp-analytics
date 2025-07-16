@@ -152,14 +152,19 @@ const Profile = () => {
                   onClick={handleProfilePictureClick}
                 >
                   {profile.profilePicture ? (
-                    <img 
-                      src={profile.profilePicture} 
-                      alt={profile.name} 
-                      className="h-24 w-24 rounded-full object-cover"
-                    />
-                  ) : (
-                    profile.name?.charAt(0) || 'U'
-                  )}
+  <img
+    src={profile.profilePicture}
+    alt={profile.name}
+    className="h-24 w-24 rounded-full object-cover"
+    onError={e => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
+  />
+) : (
+  <img
+    src="/default-avatar.png"
+    alt="Default Avatar"
+    className="h-24 w-24 rounded-full object-cover"
+  />
+)}
                   {isUploading && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>

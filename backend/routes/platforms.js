@@ -242,7 +242,12 @@ async function syncCodeforces(platformAccount) {
         if (!existingSubmission) {
           console.log(`[CREATE] New submission for user ${userId}, platformSubmissionId ${sub.id}, problem ${platformId}`);
           // Create new submission - ENSURE user ID is set correctly
-          const submission = new Submission({
+          console.log('[DEBUG] Creating new Submission with remote:', {
+  handle: username,
+  contestId: sub.problem.contestId,
+  submissionId: sub.id.toString()
+});
+const submission = new Submission({
             user: userId, // Use the user ID passed from the route handler
             problem: problem._id,
             platformSubmissionId: sub.id.toString(),
@@ -252,7 +257,12 @@ async function syncCodeforces(platformAccount) {
             timeTaken: sub.timeConsumedMillis ? sub.timeConsumedMillis / 1000 : 0, // Convert to seconds
             memoryUsed: sub.memoryConsumedBytes ? sub.memoryConsumedBytes / 1024 : 0, // Convert to KB
             submittedAt: new Date(sub.creationTimeSeconds * 1000), // Convert Unix timestamp to Date
-            platform: 'codeforces' // Explicitly set platform to 'codeforces'
+            platform: 'codeforces', // Explicitly set platform to 'codeforces'
+            remote: {
+              handle: username,
+              contestId: sub.problem.contestId,
+              submissionId: sub.id.toString()
+            }
           });
           
           await submission.save();

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import AIImprovementModal from '../components/AIImprovementModal';
+import ProfilePopup from '../components/ProfilePopup';
 
 import { Line } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
@@ -180,14 +181,19 @@ const Dashboard = () => {
                 onClick={() => setShowMenu(!showMenu)}
                 className="h-8 w-8 rounded-full bg-white flex items-center justify-center"
               >
-                <span className="text-indigo-600 font-medium">
-                  {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
-                </span>
+                {user?.profilePicture ? (
+  <img src={user.profilePicture} alt="Profile" className="h-8 w-8 rounded-full object-cover border-2 border-indigo-400" onError={e => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }} />
+) : (
+  <span className="text-indigo-600 font-medium">
+    {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+  </span>
+)}
+                )
               </button>
               {showMenu && (
                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-20">
                   <button
-                    onClick={() => { navigate('/profile'); setShowMenu(false); }}
+                    onClick={() => { setShowProfilePopup(true); setShowMenu(false); }}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     View Profile
@@ -399,6 +405,13 @@ const Dashboard = () => {
         )}
       </div>
       <AIImprovementModal open={showAIImprovement} onClose={() => setShowAIImprovement(false)} />
+      {showProfilePopup && user && (
+        <ProfilePopup
+          user={user}
+          onClose={() => setShowProfilePopup(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </>
   )};
 export default Dashboard;

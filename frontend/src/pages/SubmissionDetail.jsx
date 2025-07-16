@@ -48,6 +48,7 @@ const SubmissionDetail = () => {
         return;
       }
       let sub = response.data;
+      console.log('[DEBUG] SubmissionDetail fetched submission:', sub);
       // If code is missing, try to fetch from Codeforces
       if (
   sub.platform === 'codeforces' &&
@@ -57,21 +58,24 @@ const SubmissionDetail = () => {
 ) {
   // Try to get handle from user profile
   let handle = null;
-  if (currentUser && Array.isArray(currentUser.platformAccounts)) {
-    const cfAcc = currentUser.platformAccounts.find(acc => acc.platform === 'codeforces');
-    if (cfAcc && cfAcc.username) handle = cfAcc.username;
+if (currentUser && Array.isArray(currentUser.platformAccounts)) {
+  const cfAcc = currentUser.platformAccounts.find(acc => acc.platform === 'codeforces');
+  if (cfAcc && cfAcc.username) handle = cfAcc.username;
+}
+if (!handle || !sub.problem.contestId || !sub.platformSubmissionId) {
+        console.log('[DEBUG] Missing handle, contestId, or platformSubmissionId:', { handle, contestId: sub.problem.contestId, platformSubmissionId: sub.platformSubmissionId });
+  sub.code = '// Cannot fetch code: missing contestId, submissionId, or handle. Please re-sync your account.';
+} else {
+  try {
+    console.log('[DEBUG] Fetching code from Codeforces with:', { handle, contestId: sub.problem.contestId, platformSubmissionId: sub.platformSubmissionId });
+        const code = await fetchCodeforcesSubmissionCode(handle, sub.problem.contestId, sub.platformSubmissionId);
+    sub.code = code;
+        console.log('[DEBUG] Code fetched from Codeforces:', code);
+  } catch (err) {
+    sub.code = '// Could not fetch code from Codeforces.';
+        console.error('[DEBUG] Error fetching code from Codeforces:', err);
   }
-  if (!handle) handle = 'your_handle'; // fallback/placeholder
-  if (!sub.problem.contestId || !sub.platformSubmissionId) {
-    sub.code = '// Missing contestId or submissionId for this Codeforces submission.';
-  } else {
-    try {
-      const code = await fetchCodeforcesSubmissionCode(handle, sub.problem.contestId, sub.platformSubmissionId);
-      sub.code = code;
-    } catch (err) {
-      sub.code = '// Could not fetch code from Codeforces.';
-    }
-  }
+}
 }       
       } 
       catch (err) {
@@ -225,22 +229,30 @@ const SubmissionDetail = () => {
             </p>
           </div>
           <div className="flex gap-2">
-  <a
-    href={`https://codeforces.com/contest//submission/`}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-  >
-    View
-  </a>
-  <a
-    href={`http://localhost:3000/problems/${submission.problem._id}`}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
-  >
-    View
-  </a>
+  {submission.platform === 'codeforces' && submission.remote && submission.remote.contestId && submission.remote.submissionId && submission.problem ? (
+    <>
+      <a
+        href={`https://codeforces.com/contest/${submission.remote.contestId}/submission/${submission.remote.submissionId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+      >
+        View Submission
+      </a>
+      {submission.problem.contestId && submission.problem.index && (
+        <a
+          href={`https://codeforces.com/contest/${submission.problem.contestId}/problem/${submission.problem.index}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+        >
+          View Problem
+        </a>
+      )}
+    </>
+  ) : (
+    <span className="text-gray-400">No remote info</span>
+  )}
 </div>
         </div>
         <div className="border-t border-gray-200">
@@ -309,24 +321,26 @@ const SubmissionDetail = () => {
             }}
           >
             {submission.code || '// No code available for this submission'}
-{submission.platform === 'codeforces' && submission.platformSubmissionId && submission.problem && (
+{submission.platform === 'codeforces' && submission.remote && submission.remote.contestId && submission.remote.submissionId && submission.problem && (
   <div className="mt-2 text-xs text-gray-500">
     <a
-      href={`https://codeforces.com/contest/${submission.problem.contestId}/submission/${submission.platformSubmissionId}`}
+      href={`https://codeforces.com/contest/${submission.remote.contestId}/submission/${submission.remote.submissionId}`}
       target="_blank"
       rel="noopener noreferrer"
       className="text-blue-600 underline mr-2"
     >
-      View
+      View Submission
     </a>
-    <a
-      href={`http://localhost:3000/problems/${submission.problem._id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-green-600 underline"
-    >
-      View
-    </a>
+    {submission.problem.contestId && submission.problem.index && (
+      <a
+        href={`https://codeforces.com/contest/${submission.problem.contestId}/problem/${submission.problem.index}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-green-600 underline"
+      >
+        View Problem
+      </a>
+    )}
   </div>
 )}
           </SyntaxHighlighter>

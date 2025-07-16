@@ -15,6 +15,7 @@ const Sidebar = () => {
     { name: 'Submissions', path: '/submissions', icon: DocumentTextIcon },
     { name: 'Analytics', path: '/analytics', icon: ChartBarIcon },
     { name: 'Platforms', path: '/platforms', icon: GlobeAltIcon },
+    { name: 'Contest', path: '/contest', icon: ChartBarIcon }, // Reusing ChartBarIcon for Contest
   ];
 
   return (

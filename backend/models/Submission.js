@@ -77,6 +77,11 @@ const SubmissionSchema = new mongoose.Schema({
   },
   endTime: {
     type: Date
+  },
+  remote: {
+    handle: String,
+    contestId: String,
+    submissionId: String
   }
 }, {
   timestamps: true

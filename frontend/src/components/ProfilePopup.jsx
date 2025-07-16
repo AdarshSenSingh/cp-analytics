@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
 import { usersAPI } from '../services/api';
 
 const ProfilePopup = ({ user, onClose, onUpdate }) => {
@@ -14,20 +13,54 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
     pinCode: user?.contactInfo?.pinCode || '',
     country: user?.contactInfo?.country || ''
   });
+  const [profilePic, setProfilePic] = useState(user?.profilePicture || null);
+  const [profilePicFile, setProfilePicFile] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfilePicFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePic(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfilePicUpload = async () => {
+    if (!profilePicFile) return null;
+    const formData = new FormData();
+    formData.append('profilePicture', profilePicFile);
+    try {
+      const res = await usersAPI.uploadProfilePicture(formData);
+      return res.data.profilePictureUrl;
+    } catch (err) {
+      alert('Failed to upload profile picture.');
+      return null;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Upload profile picture if changed
+      let profilePictureUrl = user?.profilePicture;
+      if (profilePicFile) {
+        profilePictureUrl = await handleProfilePicUpload();
+      }
       // Create profile update object
       const updatedProfile = {
         name: formData.name,
         email: formData.email
       };
-      
+      if (profilePictureUrl) updatedProfile.profilePicture = profilePictureUrl;
       // Only add contactInfo if it's not empty
       if (formData.mobile || formData.city || formData.state || formData.pinCode || formData.country) {
         updatedProfile.contactInfo = {};
@@ -37,31 +70,41 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
         if (formData.pinCode) updatedProfile.contactInfo.pinCode = formData.pinCode;
         if (formData.country) updatedProfile.contactInfo.country = formData.country;
       }
-      
-      console.log('Sending profile update:', updatedProfile);
-      
       // Use the users API service with better error handling
       try {
         const response = await usersAPI.updateProfile(updatedProfile);
-        console.log('Profile update response:', response.data);
-        
         // Create a merged user object for the UI update
         const updatedUser = {
           ...user,
           ...updatedProfile
         };
-        
+        if (profilePictureUrl) updatedUser.profilePicture = profilePictureUrl;
         onUpdate(updatedUser);
+        if (profilePictureUrl) setProfilePic(profilePictureUrl);
+        setProfilePicFile(null);
         setIsEditing(false);
         alert("Profile updated successfully!");
       } catch (apiErr) {
-        console.error('API error:', apiErr);
         const errorMsg = apiErr.response?.data?.msg || 'Failed to update profile';
         alert(`Error: ${errorMsg}`);
       }
     } catch (err) {
-      console.error('Error updating profile:', err);
       alert("Failed to update profile. Please try again.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete your profile? This action cannot be undone.')) return;
+    setIsDeleting(true);
+    try {
+      await usersAPI.deleteProfile();
+      alert('Profile deleted. Logging out...');
+      localStorage.clear();
+      window.location.href = '/';
+    } catch (err) {
+      alert('Failed to delete profile.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -76,10 +119,36 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
             </svg>
           </button>
         </div>
-        
         <div className="p-4">
           {isEditing ? (
             <form onSubmit={handleSubmit}>
+              <div className="flex flex-col items-center mb-4">
+                <div className="relative w-24 h-24 mb-2">
+                  <img
+                    src={profilePic || '/default-avatar.png'}
+                    alt="Profile"
+                    className="w-24 h-24 object-cover rounded-full border-4 border-indigo-200 shadow"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-1 hover:bg-indigo-700 shadow"
+                    title="Change picture"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 10-4-4l-8 8v3z" />
+                    </svg>
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleProfilePicChange}
+                    className="hidden"
+                  />
+                </div>
+                <span className="text-xs text-gray-500">Click the camera to change</span>
+              </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">Name</label>
                 <input
@@ -154,7 +223,7 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-between space-x-2">
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
@@ -169,12 +238,27 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                   Save
                 </button>
               </div>
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Profile'}
+                </button>
+              </div>
             </form>
           ) : (
             <div>
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-2xl text-indigo-800 font-medium">
-                  {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+              <div className="flex flex-col items-center justify-center mb-4">
+                <div className="relative w-20 h-20 mb-2">
+                  <img
+                    src={user?.profilePicture || '/default-avatar.png'}
+                    alt="Profile"
+                    className="w-20 h-20 object-cover rounded-full border-4 border-indigo-200 shadow"
+                    onError={e => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
+                  />
                 </div>
               </div>
               <div className="text-center mb-4">
@@ -182,7 +266,6 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                 <p className="text-gray-600">{user?.email}</p>
                 <p className="text-sm text-gray-500 mt-1">Member since {new Date(user?.createdAt).toLocaleDateString()}</p>
               </div>
-              
               {/* Display contact info */}
               <div className="border-t border-gray-200 pt-4 mb-4">
                 <h4 className="font-medium mb-2">Contact Information</h4>
@@ -201,7 +284,6 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                   )}
                 </div>
               </div>
-              
               <div className="border-t border-gray-200 pt-4">
                 <h4 className="font-medium mb-2">Connected Platforms</h4>
                 <div className="space-y-2">
@@ -217,18 +299,18 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
                 </div>
               </div>
               <div className="mt-4 flex justify-between">
-                <Link
-                  to="/profile"
-                  className="text-indigo-600 hover:text-indigo-800 font-medium"
-                  onClick={onClose}
-                >
-                  View Full Profile
-                </Link>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
                 >
                   Edit Profile
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full ml-2"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Profile'}
                 </button>
               </div>
             </div>
