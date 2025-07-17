@@ -4,26 +4,18 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 // @route   POST /api/codeforces/code
-// @desc    Fetch and scrape code from Codeforces submission
+// @desc    Fetch and scrape code from Codeforces submission using Puppeteer (headless browser)
 // @access  Public (or add auth if you want)
+const fetchCodeforcesCode = require('../services/fetchCodeforcesCode');
+
 router.post('/code', async (req, res) => {
   console.log('[Codeforces API] Incoming body:', req.body);
-  const { handle, contestId, submissionId } = req.body;
-  if (!contestId || !submissionId) {
-    return res.status(400).json({ error: 'contestId and submissionId are required' });
+  const { url, username, password } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'submission url is required' });
   }
   try {
-    const url = `https://codeforces.com/contest/${contestId}/submission/${submissionId}`;
-    const response = await axios.get(url, {
-      headers: {
-        'Accept': 'text/html',
-        'User-Agent': 'Mozilla/5.0 (compatible; CodeFetcherBot/1.0)'
-      }
-    });
-    const html = response.data;
-    // Use cheerio to parse HTML
-    const $ = cheerio.load(html);
-    const code = $('#program-source-text').text();
+    const code = await fetchCodeforcesCode(url, username, password);
     if (!code) {
       return res.status(404).json({ error: 'Could not extract code from Codeforces submission page.' });
     }

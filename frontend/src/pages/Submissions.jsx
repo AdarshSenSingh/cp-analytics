@@ -516,10 +516,16 @@ setSubmissions(response.data.submissions);
           setAIModalLoading(false);
           return;
         }
-        const code = await fetchCodeforcesSubmissionCode(handle, contestId, submissionId);
-        setAIModalCode(code);
-        // Save code to MongoDB for future use
-        await axios.put(`/api/submissions/`, { code });
+        // Try to fetch code from new backend endpoint (greedy fetch)
+        let code = '';
+        try {
+          const url = `https://codeforces.com/contest/${contestId}/submission/${submissionId}`;
+          const resp = await axios.post('/api/codeforces/code', { url });
+          code = resp.data.code || '';
+        } catch (e) {
+          code = '';
+        }
+        setAIModalCode(code || '//no code available');
         setAIModalOpen(true);
       } catch (err) {
         setAIModalError('Failed to fetch code from Codeforces.');
