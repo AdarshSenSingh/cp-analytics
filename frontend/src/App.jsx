@@ -13,8 +13,12 @@ import Register from './pages/Register';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ContestMain from './pages/ContestMain';
+import ContestInstance from './pages/ContestInstance';
+import ContestNew from './pages/ContestNew';
 
 const Contest = React.lazy(() => import('./pages/Contest'));
+const ContestProblem = React.lazy(() => import('./pages/ContestProblem'));
 
 function App() {
   const isAuthenticated = localStorage.getItem('token');
@@ -36,7 +40,9 @@ function App() {
             <Route path="/submissions/:id" element={<SubmissionDetail />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/platforms" element={<Platforms />} />
-            <Route path="/contest" element={<Contest />} />
+            <Route path="/contest" element={<ContestMain />} />
+            <Route path="/contest/new" element={<ContestNew />} />
+            <Route path="/contest/:contestId" element={<ContestInstance />} />
           </Route>
           {/* Redirect root to dashboard or login */}
           <Route path="/" element={<Navigate to={isAuthenticated ? (role === 'admin' ? "/admin-dashboard" : "/dashboard") : "/login"} />} />

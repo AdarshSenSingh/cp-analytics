@@ -124,9 +124,13 @@ const Submissions = () => {
           submission.remote.contestId,
           submission.remote.submissionId
         );
-        setAIModalCode(code);
+        if (!code || code.trim() === '') {
+          setAIModalError('Failed to fetch code from Codeforces. Please check your account sync or try again later.');
+        } else {
+          setAIModalCode(code);
+        }
       } catch (err) {
-        setAIModalError('Failed to fetch code from Codeforces.');
+        setAIModalError('Failed to fetch code from Codeforces. Please check your account sync or try again later.');
       } finally {
         setAIModalLoading(false);
       }
@@ -498,45 +502,7 @@ setSubmissions(response.data.submissions);
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
   className={`bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 text-xs font-medium `}
-  onClick={async () => {
-    if (submission.platform === 'codeforces') {
-      setAIModalSubmission(submission);
-      setAIModalOpen(false);
-      setAIModalError('');
-      setAIModalCode('');
-      setAIModalLoading(true);
-      try {
-        // Try to get handle from remote or fallback
-        const handle = submission.remote?.handle || 'your_handle';
-        const contestId = submission.remote?.contestId || submission.problem?.contestId;
-        const submissionId = submission.remote?.submissionId || submission.platformSubmissionId;
-        if (!contestId || !submissionId) {
-          setAIModalError('Missing contestId or submissionId for this Codeforces submission.');
-          setAIModalOpen(true);
-          setAIModalLoading(false);
-          return;
-        }
-        // Try to fetch code from new backend endpoint (greedy fetch)
-        let code = '';
-        try {
-          const url = `https://codeforces.com/contest/${contestId}/submission/${submissionId}`;
-          const resp = await axios.post('/api/codeforces/code', { url });
-          code = resp.data.code || '';
-        } catch (e) {
-          code = '';
-        }
-        setAIModalCode(code || '//no code available');
-        setAIModalOpen(true);
-      } catch (err) {
-        setAIModalError('Failed to fetch code from Codeforces.');
-        setAIModalOpen(true);
-      } finally {
-        setAIModalLoading(false);
-      }
-    } else {
-      handleOpenAIModal(submission);
-    }
-  }}
+  onClick={() => handleOpenAIModal(submission)}
   disabled={aiModalLoading && aiModalSubmission?._id === submission._id}
 >
   {aiModalLoading && aiModalSubmission?._id === submission._id ? 'Loading...' : 'Help'}

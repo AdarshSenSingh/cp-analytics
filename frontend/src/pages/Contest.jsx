@@ -1,263 +1,286 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import API functions from services/contest.js (to be created)
-// import { fetchUserSubmissions, fetchCodeforcesVerdict } from '../services/contest';
+import { problemsAPI } from '../services/api';
+import axios from 'axios';
+import { fetchCodeforcesVerdict } from '../services/contest';
 
-const DURATION_OPTIONS = [
-  { label: '30 min', value: 30 },
-  { label: '1 hr', value: 60 },
-  { label: '1 hr 30 min', value: 90 },
-  { label: '2 hr', value: 120 },
-  { label: '2 hr 30 min', value: 150 },
-  { label: '3 hr', value: 180 },
-];
+const POLL_INTERVAL = 10000; // 10 seconds
+const DURATION_OPTIONS = [30, 60, 90, 120, 150, 180]; // in minutes
 
-function getISTDateTimeLocal(dateObj = new Date()) {
-  // Returns IST time in yyyy-MM-ddTHH:mm for input[type=datetime-local]
-  // dateObj: JS Date in any timezone
-  const utc = dateObj.getTime() + (dateObj.getTimezoneOffset() * 60000);
-  const ist = new Date(utc + (3600000 * 5.5));
-  // toISOString() gives UTC, so we need to manually format IST
-  const yyyy = ist.getFullYear();
-  const mm = String(ist.getMonth() + 1).padStart(2, '0');
-  const dd = String(ist.getDate()).padStart(2, '0');
-  const HH = String(ist.getHours()).padStart(2, '0');
-  const MM = String(ist.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${HH}:${MM}`;
+function getRandomUniqueProblems(problems, count) {
+  const shuffled = [...problems].sort(() => 0.5 - Math.random());
+  const unique = [];
+  const seen = new Set();
+  for (const p of shuffled) {
+    if (!seen.has(p.contestId + '-' + p.index)) {
+      unique.push(p);
+      seen.add(p.contestId + '-' + p.index);
+    }
+    if (unique.length === count) break;
+  }
+  return unique;
 }
 
-// Parse a datetime-local string as IST and return a Date object in UTC
-function parseISTDateTimeLocal(dtStr) {
-  // dtStr: 'yyyy-MM-ddTHH:mm' (assumed IST)
-  const [datePart, timePart] = dtStr.split('T');
-  const [yyyy, mm, dd] = datePart.split('-').map(Number);
-  const [HH, MM] = timePart.split(':').map(Number);
-  // Create a Date object in UTC corresponding to IST time
-  // IST = UTC+5:30, so subtract 5:30 to get UTC
-  return new Date(Date.UTC(yyyy, mm - 1, dd, HH - 5, MM - 30));
+function formatTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function ProblemStatement({ problem, duration, onBack, contestEnd }) {
+  const [timeLeft, setTimeLeft] = useState(Math.max(0, Math.floor((contestEnd - Date.now()) / 1000)));
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(Math.max(0, Math.floor((contestEnd - Date.now()) / 1000)));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [contestEnd, timeLeft]);
+  const min = Math.floor(timeLeft / 60);
+  const sec = timeLeft % 60;
+  return (
+    <div className="max-w-2xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
+      <button onClick={onBack} className="mb-4 text-indigo-600 hover:underline">&larr; Back to Contest</button>
+      <h2 className="text-xl font-bold mb-2">{problem.title}</h2>
+      <div className="mb-2 text-sm text-gray-500">Difficulty: {problem.difficulty}</div>
+      <div className="mb-4">
+        <a href={problem.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 underline">View Problem Statement on Codeforces</a>
+      </div>
+      <div className="mb-4">
+        <span className="font-semibold">Time Left: </span>
+        <span className="font-mono text-lg">{min}:{sec.toString().padStart(2, '0')}</span>
+      </div>
+      {/* Optionally add more problem details here */}
+    </div>
+  );
+}
 
 const Contest = () => {
-  const [duration, setDuration] = useState(30);
-  const [startTime, setStartTime] = useState(getISTDateTimeLocal());
-  const [scheduled, setScheduled] = useState(false);
-  const [alertShown, setAlertShown] = useState(false);
-  const [contestStarted, setContestStarted] = useState(false);
-  const [questions, setQuestions] = useState([]);
+  const [problems, setProblems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [verdicts, setVerdicts] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [countdown, setCountdown] = useState(null); // seconds until contest start
-  const [contestTimer, setContestTimer] = useState(0); // seconds elapsed since contest start
-  const navigate = useNavigate();
+  const [duration, setDuration] = useState(60); // default 1hr
+  const [startTime, setStartTime] = useState('');
+  const [scheduled, setScheduled] = useState(false);
+  const [contestStarted, setContestStarted] = useState(false);
+  const [contestEnd, setContestEnd] = useState(null);
+  const [showProblem, setShowProblem] = useState(null); // index of problem to show
+  const pollRef = useRef();
 
-  // Calculate number of questions
-  const numQuestions = Math.ceil(duration / 30);
-
-  // Schedule contest
-  const handleSchedule = async (e) => {
-    e.preventDefault();
-    setScheduled(true);
-    setAlertShown(false);
-    setContestStarted(false);
-    setQuestions([]);
-    setVerdicts({});
-    setError(null);
-    // Calculate initial countdown in seconds
-    const start = parseISTDateTimeLocal(startTime).getTime();
-    const now = (() => {
-      const d = new Date();
-      const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-      return new Date(utc + (3600000 * 5.5)).getTime();
-    })();
-    setCountdown(Math.max(0, Math.floor((start - now) / 1000)));
-    setContestTimer(0);
-  };
-
-  // Live countdown for the entire waiting period
-  useEffect(() => {
-    if (!scheduled || contestStarted) return;
-    if (countdown === null) return;
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      // Show alert modal for last 5 seconds
-      if (countdown <= 5) setAlertShown(true);
-      else setAlertShown(false);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      setContestStarted(true);
-      setAlertShown(false);
-    }
-  }, [scheduled, countdown, contestStarted]);
-
-  // Contest timer (elapsed time)
-  useEffect(() => {
-    let timer;
-    if (contestStarted) {
-      timer = setInterval(() => setContestTimer(t => t + 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [contestStarted]);
-
-  // Fetch random questions from user submissions when contest starts
-  useEffect(() => {
-    if (contestStarted && questions.length === 0) {
-      // TODO: Replace with API call
-      // fetchUserSubmissions().then(subs => { ... });
-      // For now, mock questions:
-      const mockQuestions = Array.from({ length: numQuestions }, (_, i) => ({
-        id: i + 1,
-        title: `Your Past Problem #${i + 1}`,
-        url: '#',
-        codeforcesId: '',
-      }));
-      setQuestions(mockQuestions);
-    }
-  }, [contestStarted, numQuestions, questions.length]);
-
-  // Handle verdict fetch
-  const handleVerdictFetch = async (qid, submissionId) => {
-    setSubmitting(true);
-    setError(null);
+  // Fetch unique random problems from user's solved problems
+  const fetchProblems = async (numProblems) => {
+    setLoading(true);
+    setError('');
     try {
-      // const verdict = await fetchCodeforcesVerdict(submissionId);
-      // For now, mock verdict:
-      const verdict = Math.random() > 0.5 ? 'Accepted' : 'Wrong Answer';
-      setVerdicts((prev) => ({ ...prev, [qid]: { submissionId, verdict } }));
-    } catch (e) {
-      setError('Failed to fetch verdict.');
+      const res = await problemsAPI.getSolvedProblems();
+      const allProblems = res.data.problems || res.data || [];
+      const uniqueProblems = getRandomUniqueProblems(allProblems, numProblems);
+      setProblems(uniqueProblems);
+    } catch (err) {
+      setError('Failed to load contest problems.');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
+  // Fetch verdicts for all problems
+  const fetchVerdicts = async (problemsList) => {
+    if (!problemsList || problemsList.length === 0) return;
+    try {
+      const token = localStorage.getItem('token');
+      const ids = problemsList.map((p) => p._id);
+      const res = await axios.post(
+        '/api/contest/verdicts',
+        { problemIds: ids },
+        { headers: { 'x-auth-token': token } }
+      );
+      setVerdicts(res.data.verdicts || {});
+    } catch (err) {
+      // Optionally handle error
+    }
+  };
+
+  // Poll verdicts automatically
+  useEffect(() => {
+    if (problems.length === 0) return;
+    fetchVerdicts(problems);
+    pollRef.current = setInterval(() => {
+      fetchVerdicts(problems);
+    }, POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
+  }, [problems]);
+
+  // Contest scheduling logic
+  const handleSchedule = () => {
+    const now = new Date();
+    let start;
+    if (startTime) {
+      start = new Date();
+      const [h, m] = startTime.split(":");
+      start.setHours(parseInt(h, 10));
+      start.setMinutes(parseInt(m, 10));
+      start.setSeconds(0);
+      if (start < now) start.setDate(start.getDate() + 1); // next day if time passed
+    } else {
+      start = now;
+    }
+    const end = new Date(start.getTime() + duration * 60000);
+    setContestEnd(end.getTime());
+    setScheduled(true);
+    setContestStarted(false);
+    setShowProblem(null);
+    fetchProblems(Math.ceil(duration / 30));
+    // Start contest at the scheduled time
+    const delay = start - now;
+    setTimeout(() => {
+      setContestStarted(true);
+    }, delay > 0 ? delay : 0);
+  };
+
+  useEffect(() => {
+    // Reset contest state if duration or startTime changes
+    setScheduled(false);
+    setContestStarted(false);
+    setShowProblem(null);
+  }, [duration, startTime]);
+
+  const getStatusBadgeClass = (verdict) => {
+    switch (verdict) {
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'wrong_answer':
+        return 'bg-red-100 text-red-800';
+      case 'time_limit_exceeded':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'memory_limit_exceeded':
+        return 'bg-orange-100 text-orange-800';
+      case 'runtime_error':
+        return 'bg-purple-100 text-purple-800';
+      case 'compilation_error':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
+    }
+  };
+
+  const formatStatus = (status) => {
+    if (!status) return 'Pending';
+    return status
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Main contest UI
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">User Contest</h1>
-      {!scheduled && (
-        <form onSubmit={handleSchedule} className="space-y-4 bg-white p-4 rounded shadow">
-          <div>
-            <label className="block font-medium mb-1">Duration</label>
-            <select
-              className="w-full border rounded px-3 py-2"
-              value={duration}
-              onChange={e => setDuration(Number(e.target.value))}
-            >
-              {DURATION_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block font-medium mb-1">Start Time (IST)</label>
-            <input
-              type="datetime-local"
-              className="w-full border rounded px-3 py-2"
-              value={startTime}
-              onChange={e => setStartTime(e.target.value)}
-              min={getISTDateTimeLocal()}
-              required
-            />
-            <div className="text-xs text-gray-500 mt-1">Current IST: {getISTDateTimeLocal().replace('T', ' ')}</div>
-          </div>
-          <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Schedule Contest</button>
-        </form>
-      )}
-      {scheduled && !contestStarted && (
-        <div className="mt-8 text-center">
-          <p className="text-lg">Contest scheduled for <b>{(() => {
-            // Format startTime as IST
-            const d = parseISTDateTimeLocal(startTime);
-            return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-          })()}</b> (IST)</p>
-          <div className="mt-4 flex flex-col items-center">
-            <span className="text-2xl font-bold text-indigo-700">Contest starts in</span>
-            <span className="text-4xl font-mono font-extrabold text-red-600 mt-2">
-              {countdown !== null ?
-                `${String(Math.floor(countdown/3600)).padStart(2,'0')}:${String(Math.floor((countdown%3600)/60)).padStart(2,'0')}:${String(countdown%60).padStart(2,'0')}`
-                : '--:--:--'}
-            </span>
+    <div className="space-y-6">
+      <div className="bg-white shadow rounded-lg p-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">My Contest</h1>
+        {/* Scheduling UI */}
+        {!scheduled && (
+          <div className="mb-6">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select Duration</label>
+              <select
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              >
+                {DURATION_OPTIONS.map(mins => (
+                  <option key={mins} value={mins}>{mins} min ({Math.ceil(mins/30)} problems)</option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Time (optional)</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+              <div className="text-xs text-gray-500 mt-1">Leave blank to start now</div>
+            </div>
             <button
-              className="mt-8 px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold shadow"
-              onClick={() => {
-                setScheduled(false);
-                setAlertShown(false);
-                setContestStarted(false);
-                setQuestions([]);
-                setVerdicts({});
-                setError(null);
-                setCountdown(null);
-                setContestTimer(0);
-              }}
+              onClick={handleSchedule}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
             >
-              Exit Contest
+              Schedule Contest
             </button>
           </div>
-        </div>
-      )}
-      {alertShown && !contestStarted && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div className="bg-white p-10 rounded-2xl shadow-2xl text-center border-4 border-indigo-600 animate-pulse">
-            <h2 className="text-3xl font-extrabold mb-4 text-indigo-700">Contest is about to begin!</h2>
-            <p className="text-lg mb-2">Get ready...</p>
-            <div className="text-6xl font-mono font-bold text-red-600 mb-2">
-              {countdown !== null ? countdown : ''}
-            </div>
-            <p className="text-gray-500">Starting soon</p>
+        )}
+        {/* Waiting for contest to start */}
+        {scheduled && !contestStarted && (
+          <div className="py-10 text-center text-gray-500">
+            Contest scheduled. Waiting to start at {startTime ? startTime : formatTime(new Date())}...
           </div>
-        </div>
-      )}
-      {contestStarted && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-extrabold text-indigo-700">Contest in Progress</h2>
-            <div className="bg-gray-100 px-4 py-2 rounded-lg text-lg font-mono">
-              Time Remaining: {(() => {
-                const remaining = duration * 60 - contestTimer;
-                const min = Math.floor(remaining / 60).toString().padStart(2, '0');
-                const sec = (remaining % 60).toString().padStart(2, '0');
-                return `${min}:${sec}`;
-              })()}
-              <span className="ml-2 text-gray-500 text-sm">/ {Math.floor(duration/60).toString().padStart(2, '0')}:{(duration%60).toString().padStart(2, '0')}</span>
+        )}
+        {/* Contest in progress: show problems table or problem statement */}
+        {contestStarted && showProblem === null && (
+          loading ? (
+            <div className="py-10 text-center text-gray-500">Loading problems...</div>
+          ) : error ? (
+            <div className="py-10 text-center text-red-500">{error}</div>
+          ) : problems.length === 0 ? (
+            <div className="py-10 text-center text-gray-500">No contest problems found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {problems.map((problem, idx) => (
+                    <tr key={problem._id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{problem.difficulty}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <a
+                          href={problem.url}
+                          className="text-indigo-600 hover:text-indigo-900 underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Problem Statement
+                        </a>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(verdicts[problem._id])}`}>
+                          {formatStatus(verdicts[problem._id])}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs font-medium"
+                          onClick={() => setShowProblem(idx)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <button className="ml-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold" onClick={() => navigate('/dashboard')}>Exit Contest</button>
-          </div>
-          <div className="mb-4 text-gray-600">Answer the following questions. Submit your solution on Codeforces and paste your submission ID/link below to get the verdict.</div>
-          <ol className="space-y-8">
-            {questions.map((q, idx) => (
-              <li key={q.id} className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-400">
-                <div className="flex items-center mb-2">
-                  <span className="text-xl font-bold text-indigo-600 mr-2">Q{idx + 1}.</span>
-                  <span className="font-semibold text-lg">{q.title}</span>
-                </div>
-                <a href={q.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline text-sm">View Problem</a>
-                <div className="mt-4 flex items-center">
-                  <label className="block text-sm mr-2">Codeforces Submission ID/Link:</label>
-                  <input
-                    type="text"
-                    className="border rounded px-2 py-1 w-64 focus:ring-2 focus:ring-indigo-400"
-                    value={verdicts[q.id]?.submissionId || ''}
-                    onChange={e => setVerdicts(v => ({ ...v, [q.id]: { ...v[q.id], submissionId: e.target.value } }))}
-                    placeholder="e.g. 123456789"
-                  />
-                  <button
-                    className={`ml-2 px-4 py-1 rounded font-semibold transition-colors duration-150 ${submitting && verdicts[q.id]?.submissionId ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                    disabled={submitting || !verdicts[q.id]?.submissionId}
-                    onClick={() => handleVerdictFetch(q.id, verdicts[q.id]?.submissionId)}
-                  >
-                    {submitting && verdicts[q.id]?.submissionId ? 'Checking...' : 'Get Verdict'}
-                  </button>
-                  {verdicts[q.id]?.verdict && (
-                    <span className={`ml-4 font-bold ${verdicts[q.id].verdict === 'Accepted' ? 'text-green-600' : 'text-red-600'}`}>{verdicts[q.id].verdict}</span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      {error && <div className="mt-4 text-red-600">{error}</div>}
+          )
+        )}
+        {/* Problem statement page */}
+        {contestStarted && showProblem !== null && problems[showProblem] && (
+          <ProblemStatement
+            problem={problems[showProblem]}
+            duration={duration}
+            contestEnd={contestEnd}
+            onBack={() => setShowProblem(null)}
+          />
+        )}
+      </div>
     </div>
   );
 };
