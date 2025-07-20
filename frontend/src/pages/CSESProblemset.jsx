@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 export const CSES_PROBLEMS = [
   {
@@ -453,6 +453,7 @@ export const CSES_PROBLEMS = [
       { id: 'cses-2130', title: 'Distinct Routes II', url: 'https://cses.fi/problemset/task/2130/' },
     ]
   },
+  // ... (add the rest of your original 200+ problems here)
 ];
 
 const getSolved = () => {
@@ -467,8 +468,50 @@ const setSolved = (solved) => {
   localStorage.setItem('csesSolved', JSON.stringify(solved));
 };
 
+const Engine = ({ sectionName }) => (
+  <div className="flex flex-col items-center mr-6">
+    <svg width="320" height="200" viewBox="0 0 320 200">
+      <rect x="30" y="90" width="240" height="80" rx="28" fill="#6366f1" stroke="#3730a3" strokeWidth="8" />
+      <rect x="210" y="130" width="70" height="45" rx="14" fill="#818cf8" stroke="#3730a3" strokeWidth="5" />
+      <circle cx="75" cy="185" r="14" fill="#fbbf24" stroke="#b45309" strokeWidth="4" />
+      <circle cx="235" cy="185" r="14" fill="#fbbf24" stroke="#b45309" strokeWidth="4" />
+      <rect x="100" y="50" width="120" height="50" rx="16" fill="#a5b4fc" stroke="#3730a3" strokeWidth="5" />
+      <foreignObject x="40" y="110" width="220" height="50">
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="text-center font-bold text-indigo-900 break-words leading-tight" style={{fontSize: sectionName.length > 22 ? '1rem' : '1.25rem', width: '100%', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+            {sectionName}
+          </span>
+        </div>
+      </foreignObject>
+    </svg>
+  </div>
+);
+
+const Coach = ({ children, solved }) => (
+  <div className="flex flex-col items-center mx-1">
+    <svg width="200" height="140" viewBox="0 0 200 140" style={{ display: 'block' }}>
+      <rect x="25" y="45" width="150" height="65" rx="22" fill={solved ? '#bbf7d0' : '#fff'} stroke="#64748b" strokeWidth="5" />
+      <circle cx="60" cy="125" r="10" fill="#a3a3a3" stroke="#525252" strokeWidth="2.5" />
+      <circle cx="140" cy="125" r="10" fill="#a3a3a3" stroke="#525252" strokeWidth="2.5" />
+      <foreignObject x="35" y="55" width="130" height="50">
+        <div className="flex flex-col items-center justify-center w-full h-full">
+          {children}
+        </div>
+      </foreignObject>
+    </svg>
+  </div>
+);
+
+const Track = ({ count }) => (
+  <div className="absolute left-0 right-0 bottom-2 h-2 flex items-center z-0">
+    <div className="w-full h-2 bg-gradient-to-r from-gray-400 via-gray-300 to-gray-400 rounded-full" style={{ minWidth: count * 100 }} />
+  </div>
+);
+
 const CSESProblemset = () => {
   const [solved, setSolvedState] = useState(getSolved());
+  const trainRefs = useRef({});
+  const [running, setRunning] = useState({}); // { sectionName: boolean }
 
   useEffect(() => {
     setSolvedState(getSolved());
@@ -480,13 +523,40 @@ const CSESProblemset = () => {
     setSolvedState(updated);
   };
 
+  const scrollTrain = (section, dir) => {
+    const ref = trainRefs.current[section];
+    if (ref) {
+      const scrollAmount = 250;
+      ref.scrollBy({ left: dir * scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Run button logic
+  const handleRun = (section) => {
+    const ref = trainRefs.current[section];
+    if (!ref) return;
+    setRunning(r => ({ ...r, [section]: true }));
+    const scrollAmount = 50;
+    const interval = setInterval(() => {
+      if (!ref) return clearInterval(interval);
+      const maxScroll = ref.scrollWidth - ref.clientWidth;
+      if (ref.scrollLeft + scrollAmount >= maxScroll) {
+        ref.scrollTo({ left: maxScroll, behavior: 'smooth' });
+        setRunning(r => ({ ...r, [section]: false }));
+        clearInterval(interval);
+      } else {
+        ref.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }, 120);
+  };
+
   // Overall stats
   const allProblems = CSES_PROBLEMS.flatMap(section => section.problems);
   const totalProblems = allProblems.length;
   const totalSolved = allProblems.filter(p => solved[p.id]).length;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto py-8">
+    <div className="space-y-12 max-w-7xl mx-auto py-8">
       <h1 className="text-3xl font-bold text-indigo-800 mb-2 text-center">CSES Problemset</h1>
       <div className="flex justify-center mb-6">
         <div className="bg-gray-100 rounded-lg px-6 py-2 text-lg font-semibold text-gray-800 shadow">
@@ -504,39 +574,87 @@ const CSESProblemset = () => {
                 {sectionSolved} / {sectionTotal} solved
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {section.problems.map(problem => (
-                <div
-                  key={problem.id}
-                  className={`rounded-lg shadow flex flex-col items-start p-3 border transition-all duration-150 min-h-[110px] ${
-                    solved[problem.id]
-                      ? 'bg-green-100 border-green-400'
-                      : 'bg-white border-gray-200 hover:shadow-lg'
-                  }`}
-                  style={{ minHeight: 110 }}
-                >
-                  <a
-                    href={problem.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-indigo-700 text-base mb-1 hover:underline truncate w-full"
-                    title={problem.title}
-                  >
-                    {problem.title}
-                  </a>
-                  <div className="flex-1" />
-                  {solved[problem.id] ? (
-                    <span className="mt-2 px-2 py-0.5 bg-green-600 text-white rounded text-xs font-medium">Solved</span>
-                  ) : (
-                    <button
-                      className="mt-2 px-2 py-0.5 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700"
-                      onClick={() => handleMarkSolved(problem.id)}
-                    >
-                      Mark as Solved
-                    </button>
-                  )}
+            <div className="relative flex items-center">
+              <button
+                className="z-10 bg-indigo-200 hover:bg-indigo-300 text-indigo-800 font-bold rounded-full w-10 h-10 flex items-center justify-center shadow mr-2"
+                onClick={() => scrollTrain(section.topic, -1)}
+                aria-label="Back"
+              >
+                &#8592;
+              </button>
+              <div
+                className="flex flex-row items-end overflow-x-auto pb-8 relative scrollbar-hide"
+                style={{ scrollBehavior: 'smooth', minHeight: 120 }}
+                ref={el => (trainRefs.current[section.topic] = el)}
+              >
+                {/* Rope connector behind the train */}
+                <div style={{position: 'absolute', left: 0, right: 0, top: 135, zIndex: 0, pointerEvents: 'none'}}>
+                  <svg width={(section.problems.length + 1) * 200 + 120} height="12" style={{display: 'block', marginLeft: 0}}>
+                    <line 
+                      x1={80} 
+                      y1={6} 
+                      x2={(section.problems.length + 1) * 200 + 40} 
+                      y2={6} 
+                      stroke="#b45309" 
+                      strokeWidth="6" 
+                      strokeLinecap="round" 
+                    />
+                  </svg>
                 </div>
-              ))}
+                <div style={{zIndex: 1, display: 'flex'}} className="flex flex-row items-end w-full">
+                  <Engine sectionName={section.topic} />
+                  {section.problems.map(problem => (
+                    <Coach key={problem.id} solved={solved[problem.id]}>
+                      <a
+                        href={problem.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block font-semibold text-indigo-700 text-xs mb-1 hover:underline truncate w-full"
+                        title={problem.title}
+                      >
+                        {problem.title}
+                      </a>
+                      {solved[problem.id] ? (
+                        <span className="mt-1 px-2 py-0.5 bg-green-600 text-white rounded text-[10px] font-medium">Solved</span>
+                      ) : (
+                        <button
+                          className="mt-1 px-2 py-0.5 bg-green-600 text-white rounded text-[10px] font-medium hover:bg-green-700"
+                          onClick={() => handleMarkSolved(problem.id)}
+                        >
+                          Mark as Solved
+                        </button>
+                      )}
+                    </Coach>
+                  ))}
+                </div>
+              </div>
+              <button
+                className="z-10 bg-indigo-200 hover:bg-indigo-300 text-indigo-800 font-bold rounded-full w-10 h-10 flex items-center justify-center shadow ml-2"
+                onClick={() => scrollTrain(section.topic, 1)}
+                aria-label="Forward"
+              >
+                &#8594;
+              </button>
+              <div className="flex flex-col items-center ml-2 gap-2">
+                <button
+                  className={`z-10 bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold rounded-full w-16 h-10 flex items-center justify-center shadow transition-opacity duration-200 ${running[section.topic] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !running[section.topic] && handleRun(section.topic)}
+                  disabled={running[section.topic]}
+                  aria-label="Run Train"
+                >
+                  Run
+                </button>
+                <button
+                  className="z-10 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-full w-16 h-10 flex items-center justify-center shadow"
+                  onClick={() => {
+                    const ref = trainRefs.current[section.topic];
+                    if (ref) ref.scrollTo({ left: 0, behavior: 'smooth' });
+                  }}
+                  aria-label="Reset Train"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         );
