@@ -1,4 +1,60 @@
 import React, { useState, useEffect, useCallback } from 'react';
+// Creative dynamic confetti and icons
+const Confetti = ({ show }) => show ? (
+  <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    {[...Array(60)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute rounded-full opacity-80 animate-confetti"
+        style={{
+          width: `${Math.random() * 8 + 4}px`,
+          height: `${Math.random() * 8 + 4}px`,
+          background: `hsl(${Math.random() * 360}, 90%, 60%)`,
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          animationDuration: `${Math.random() * 1.5 + 1}s`,
+        }}
+      />
+    ))}
+  </div>
+) : null;
+
+const StatusIcon = ({ status }) => {
+  if (status === 'accepted') {
+    return <span className="inline-block animate-pop text-green-600">✔️</span>;
+  } else if (status === 'pending') {
+    return <span className="inline-block animate-spin text-blue-500">⏳</span>;
+  } else if (status === 'wrong_answer' || status === 'rejected') {
+    return <span className="inline-block animate-shake text-red-500">❌</span>;
+  } else {
+    return <span className="inline-block text-gray-400">•</span>;
+  }
+};
+
+const ProgressBar = ({ percent }) => (
+  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+    <div className="h-2 bg-gradient-to-r from-indigo-400 to-green-400 rounded-full animate-progress" style={{ width: `${percent}%` }} />
+  </div>
+);
+
+// Add creative CSS animations
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes confetti {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(200px) scale(0.7); opacity: 0; }
+}
+.animate-confetti { animation: confetti linear forwards; }
+@keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.animate-pop { animation: pop 0.5s cubic-bezier(.68,-0.55,.27,1.55); }
+@keyframes shake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-4px);} 40%,80%{transform:translateX(4px);} }
+.animate-shake { animation: shake 0.6s; }
+@keyframes progress { from { width: 0; } to { width: 100%; } }
+.animate-progress { animation: progress 1.2s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in 0.3s; }
+`;
+document.head.appendChild(style);
 import AIAssistantModal from '../components/AIAssistantModal';
 import CodeViewModal from '../components/CodeViewModal';
 import axios from 'axios';
@@ -8,6 +64,7 @@ import { Link } from 'react-router-dom';
 
 const Submissions = () => {
   const [submissions, setSubmissions] = useState([]);
+  const [confetti, setConfetti] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState({
@@ -52,6 +109,12 @@ const Submissions = () => {
 
   // Code View Modal logic
   const handleOpenCodeView = async (submission) => {
+    // Confetti for accepted
+    if (submission.status === 'accepted') {
+      setConfetti(true);
+      setTimeout(() => setConfetti(false), 1800);
+    }
+    // ...rest as before
     console.log('[DEBUG] handleOpenCodeView called with submission:', submission);
     const isRemote = isCodeforcesRemote(submission);
     console.log('[DEBUG] isCodeforcesRemote:', isRemote);
@@ -289,44 +352,71 @@ setSubmissions(response.data.submissions);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">My Submissions</h1>
+    <div className="space-y-6 relative">
+      {/* Animated background shapes */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        {[...Array(12)].map((_,i) => (
+          <div key={i} className="absolute rounded-full opacity-30 blur-2xl animate-float"
+            style={{
+              width: `${Math.random()*120+80}px`,
+              height: `${Math.random()*120+80}px`,
+              background: `linear-gradient(135deg, hsl(${Math.random()*360},80%,80%), hsl(${Math.random()*360},80%,90%))`,
+              top: `${Math.random()*100}%`,
+              left: `${Math.random()*100}%`,
+              animationDuration: `${Math.random()*6+6}s`,
+              animationDelay: `${Math.random()*2}s`,
+            }}
+          />
+        ))}
+      </div>
+      <Confetti show={confetti} />
+      {/* Celebrate button */}
+      <button
+        className="fixed bottom-8 right-8 z-50 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-full shadow-lg px-6 py-3 text-lg animate-bounce"
+        onClick={() => { setConfetti(true); setTimeout(() => setConfetti(false), 1800); }}
+        style={{boxShadow:'0 4px 32px 0 #f472b6'}}
+      >
+        🎉 Celebrate
+      </button>
+      <div className="relative bg-white/70 shadow-xl rounded-3xl p-8 mb-4 border border-indigo-200 backdrop-blur-lg" style={{boxShadow:'0 8px 32px 0 #6366f1cc'}}>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <span className="inline-block animate-pop text-3xl">📊</span>
+            <h1 className="text-3xl font-extrabold text-indigo-900 tracking-tight drop-shadow">My Submissions</h1>
+          </div>
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:from-indigo-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 border-2 border-white"
+            style={{boxShadow:'0 2px 16px 0 #818cf8'}}
           >
             {isSyncing ? 'Syncing...' : 'Sync Now'}
           </button>
         </div>
-        
         {/* Filters section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
           <div>
-            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+            <label htmlFor="platform" className="block text-sm font-bold text-indigo-700 mb-1">Platform</label>
             <select
               id="platform"
               name="platform"
               value={filter.platform}
               onChange={handleFilterChange}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             >
               <option value="">All Platforms</option>
               <option value="codeforces">Codeforces</option>
               {/* Add other platforms as needed */}
             </select>
           </div>
-          
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label htmlFor="status" className="block text-sm font-bold text-indigo-700 mb-1">Status</label>
             <select
               id="status"
               name="status"
               value={filter.status}
               onChange={handleFilterChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             >
               <option value="">All Statuses</option>
               <option value="accepted">Accepted</option>
@@ -337,50 +427,47 @@ setSubmissions(response.data.submissions);
               <option value="compilation_error">Compilation Error</option>
             </select>
           </div>
-          
           <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <label htmlFor="startDate" className="block text-sm font-bold text-indigo-700 mb-1">Start Date</label>
             <input
               type="date"
               id="startDate"
               name="startDate"
               value={dateRange.startDate}
               onChange={handleDateChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             />
           </div>
-          
           <div>
-            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <label htmlFor="endDate" className="block text-sm font-bold text-indigo-700 mb-1">End Date</label>
             <input
               type="date"
               id="endDate"
               name="endDate"
               value={dateRange.endDate}
               onChange={handleDateChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             />
           </div>
-          
           <div>
-            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+            <label htmlFor="sort" className="block text-sm font-bold text-indigo-700 mb-1">Sort By</label>
             <select
               id="sort"
               name="sort"
               value={sort}
               onChange={handleSortChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
             </select>
           </div>
         </div>
-        
-        <div className="md:self-end">
+        <div className="flex justify-end">
           <button
             onClick={handleApplyFilters}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+            className="px-8 py-2 bg-gradient-to-r from-pink-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:from-pink-600 hover:to-indigo-600 transition-all duration-200 border-2 border-white"
+            style={{boxShadow:'0 2px 16px 0 #f472b6'}}
           >
             Apply Filters
           </button>
@@ -434,10 +521,11 @@ setSubmissions(response.data.submissions);
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {submissions.map((submission) => (
-                  <tr key={submission._id}>
+                {submissions.map((submission, idx) => (
+                  <tr key={submission._id} className="relative group">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                        <StatusIcon status={submission.status} />
                         <Link to={`/problems/${submission.problem._id}`} className="hover:text-indigo-600">
                           {submission.problem.title}
                         </Link>
@@ -445,6 +533,7 @@ setSubmissions(response.data.submissions);
                       <div className="text-sm text-gray-500">
                         {submission.problem.difficulty}
                       </div>
+                      <div className="mt-2"><ProgressBar percent={100} /></div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 capitalize">{submission.platform}</div>

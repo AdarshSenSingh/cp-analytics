@@ -4,12 +4,80 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import AIImprovementModal from '../components/AIImprovementModal';
 import ProfilePopup from '../components/ProfilePopup';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Chart, CategoryScale, LinearScale, LineElement, BarElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 
-import { Line } from 'react-chartjs-2';
-import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+Chart.register(CategoryScale, LinearScale, LineElement, BarElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
+// --- Creative Dynamic Components ---
+const Confetti = ({ show }) => show ? (
+  <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    {[...Array(60)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute rounded-full opacity-80 animate-confetti"
+        style={{
+          width: `${Math.random() * 8 + 4}px`,
+          height: `${Math.random() * 8 + 4}px`,
+          background: `hsl(${Math.random() * 360}, 90%, 60%)`,
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          animationDuration: `${Math.random() * 1.5 + 1}s`,
+        }}
+      />
+    ))}
+  </div>
+) : null;
 
-Chart.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler);
+const AnimatedCounter = ({ value, duration = 1200, className = "" }) => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let start = 0;
+    const end = value || 0;
+    if (start === end) return;
+    let increment = end / (duration / 16);
+    let raf;
+    const animate = () => {
+      start += increment;
+      if ((increment > 0 && start >= end) || (increment < 0 && start <= end)) {
+        setCount(end);
+        return;
+      }
+      setCount(Math.round(start));
+      raf = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => raf && cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <span className={className}>{count}</span>;
+};
+
+const ProgressRing = ({ percent, size = 80, stroke = 8, color = '#6366f1', bg = '#e0e7ef', label = '' }) => {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  return (
+    <svg width={size} height={size} className="block mx-auto">
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg} strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={offset} style={{transition:'stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)'}} />
+      <text x="50%" y="50%" textAnchor="middle" dy=".3em" fontSize={size/4} fill={color} fontWeight="bold">{label}</text>
+    </svg>
+  );
+};
+
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes confetti {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(200px) scale(0.7); opacity: 0; }
+}
+.animate-confetti { animation: confetti linear forwards; }
+@keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.animate-pop { animation: pop 0.5s cubic-bezier(.68,-0.55,.27,1.55); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in 0.3s; }
+`;
+document.head.appendChild(style);
 
 const Dashboard = () => {
 

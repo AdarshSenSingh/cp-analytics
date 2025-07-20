@@ -1,5 +1,90 @@
 import React, { useState, useEffect, useCallback } from 'react';
+// --- Creative Dynamic Components ---
+const Confetti = ({ show }) => show ? (
+  <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    {[...Array(60)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute rounded-full opacity-80 animate-confetti"
+        style={{
+          width: `${Math.random() * 8 + 4}px`,
+          height: `${Math.random() * 8 + 4}px`,
+          background: `hsl(${Math.random() * 360}, 90%, 60%)`,
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          animationDuration: `${Math.random() * 1.5 + 1}s`,
+        }}
+      />
+    ))}
+  </div>
+) : null;
+
+const AnimatedCounter = ({ value, duration = 1200, className = "" }) => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let start = 0;
+    const end = value || 0;
+    if (start === end) return;
+    let increment = end / (duration / 16);
+    let raf;
+    const animate = () => {
+      start += increment;
+      if ((increment > 0 && start >= end) || (increment < 0 && start <= end)) {
+        setCount(end);
+        return;
+      }
+      setCount(Math.round(start));
+      raf = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => raf && cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <span className={className}>{count}</span>;
+};
+
+const ProgressRing = ({ percent, size = 80, stroke = 8, color = '#6366f1', bg = '#e0e7ef', label = '' }) => {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  return (
+    <svg width={size} height={size} className="block mx-auto">
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg} strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={offset} style={{transition:'stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)'}} />
+      <text x="50%" y="50%" textAnchor="middle" dy=".3em" fontSize={size/4} fill={color} fontWeight="bold">{label}</text>
+    </svg>
+  );
+};
+
+const Mascot = ({ animate, onClick }) => (
+  <div
+    className={`fixed left-8 bottom-8 z-50 transition-transform duration-500 cursor-pointer ${animate ? 'scale-110 rotate-6' : ''}`}
+    onClick={onClick}
+    title="Ask AI Buddy for help!"
+    style={{pointerEvents:'auto'}}
+  >
+    <span className="text-5xl animate-bounce">🤖</span>
+    <div className="text-xs text-indigo-700 font-bold text-center mt-1">AI Buddy</div>
+  </div>
+);
+
+// Add creative CSS animations
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes confetti {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(200px) scale(0.7); opacity: 0; }
+}
+.animate-confetti { animation: confetti linear forwards; }
+@keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.animate-pop { animation: pop 0.5s cubic-bezier(.68,-0.55,.27,1.55); }
+@keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-30px);} }
+.animate-float { animation: float 8s ease-in-out infinite; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in 0.3s; }
+`;
+document.head.appendChild(style);
 import { getAIResponse } from '../services/ai';
+import AIAssistantModal from '../components/AIAssistantModal';
 import axios from 'axios';
 import { Bar, Pie } from 'react-chartjs-2';
 import { 
@@ -26,6 +111,14 @@ ChartJS.register(
 );
 
 const Analytics = () => {
+  // Dynamic/creative state
+  const [confetti, setConfetti] = useState(false);
+  const [mascotAnim, setMascotAnim] = useState(false);
+  // AI modal state for mascot
+  const [aiModalOpen, setAIModalOpen] = useState(false);
+  const [aiModalCode, setAIModalCode] = useState('');
+  const [aiModalLoading, setAIModalLoading] = useState(false);
+  const [aiModalError, setAIModalError] = useState('');
   // AI Suggestion State
   const [aiSuggestions, setAiSuggestions] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
@@ -295,23 +388,61 @@ const Analytics = () => {
   const platformAccount = platformAccounts.find(acc => acc.platform === selectedPlatform);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Animated background shapes */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        {[...Array(10)].map((_,i) => (
+          <div key={i} className="absolute rounded-full opacity-20 blur-2xl animate-float"
+            style={{
+              width: `${Math.random()*160+100}px`,
+              height: `${Math.random()*160+100}px`,
+              background: `linear-gradient(135deg, hsl(${Math.random()*360},80%,80%), hsl(${Math.random()*360},80%,90%))`,
+              top: `${Math.random()*100}%`,
+              left: `${Math.random()*100}%`,
+              animationDuration: `${Math.random()*8+8}s`,
+              animationDelay: `${Math.random()*2}s`,
+            }}
+          />
+        ))}
+      </div>
+      <Confetti show={confetti} />
+      <Mascot animate={mascotAnim} onClick={() => { setAIModalOpen(true); setAIModalCode(''); setAIModalError(''); }} />
+      {aiModalOpen && (
+        <AIAssistantModal
+          open={aiModalOpen}
+          onClose={() => setAIModalOpen(false)}
+          code={aiModalCode}
+          language={''}
+          problemTitle={''}
+          loading={aiModalLoading}
+          error={aiModalError}
+        />
+      )}
+      <button
+        className="fixed bottom-8 right-8 z-50 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-full shadow-lg px-6 py-3 text-lg animate-bounce"
+        onClick={() => { setConfetti(true); setMascotAnim(true); setTimeout(() => setConfetti(false), 1800); setTimeout(() => setMascotAnim(false), 1200); }}
+        style={{boxShadow:'0 4px 32px 0 #f472b6'}}
+      >
+        🎉 Celebrate
+      </button>
       {/* Platform Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-lg shadow-lg">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Codeforces Analytics</h1>
+      <div className="relative bg-white/70 shadow-xl rounded-3xl p-8 mb-4 border border-indigo-200 backdrop-blur-lg" style={{boxShadow:'0 8px 32px 0 #6366f1cc'}}>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <span className="inline-block animate-pop text-3xl">📈</span>
+            <h1 className="text-3xl font-extrabold text-indigo-900 tracking-tight drop-shadow">Codeforces Analytics</h1>
+          </div>
           <div className="flex items-center space-x-4">
             {platformAccount && (
               <button 
                 onClick={handleSync}
                 disabled={isLoading}
-                className="px-4 py-2 bg-white text-blue-700 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
+                className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:from-indigo-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 border-2 border-white"
+                style={{boxShadow:'0 2px 16px 0 #818cf8'}}
               >
                 {isLoading ? 'Syncing...' : 'Sync Now'}
               </button>
             )}
-            
-            {/* Add profile button here if needed */}
           </div>
         </div>
         {platformAccount && (
@@ -325,19 +456,18 @@ const Analytics = () => {
           </div>
         )}
       </div>
-      
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="relative bg-white/70 shadow-xl rounded-3xl p-8 mb-4 border border-indigo-200 backdrop-blur-lg" style={{boxShadow:'0 8px 32px 0 #6366f1cc'}}>
+        <h2 className="text-lg font-bold text-indigo-700 mb-4 flex items-center gap-2"><span className="animate-pop">🔎</span> Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+            <label htmlFor="platform" className="block text-sm font-bold text-indigo-700 mb-1">Platform</label>
             <select
               id="platform"
               name="platform"
               value={selectedPlatform}
               onChange={handlePlatformChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="mt-1 block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             >
               {platformAccounts.map(account => (
                 <option key={account.platform} value={account.platform}>
@@ -346,27 +476,25 @@ const Analytics = () => {
               ))}
             </select>
           </div>
-          
           <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <label htmlFor="startDate" className="block text-sm font-bold text-indigo-700 mb-1">Start Date</label>
             <input
               type="date"
               id="startDate"
               name="startDate"
               value={dateRange.startDate}
               onChange={handleDateChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              className="block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             />
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <label className="block text-sm font-bold text-indigo-700 mb-1">End Date</label>
             <input
               type="date"
               name="endDate"
               value={dateRange.endDate}
               onChange={handleDateChange}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="mt-1 block w-full rounded-xl border-indigo-200 shadow focus:border-pink-400 focus:ring-pink-300 sm:text-sm bg-white/80 hover:bg-indigo-50 transition-all"
             />
           </div>
         </div>
@@ -374,30 +502,23 @@ const Analytics = () => {
       
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Problems Solved</h3>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">{summaryData?.totalSolvedProblems || 0}</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-sm font-bold text-indigo-700">Total Problems Solved</h3>
+          <AnimatedCounter value={summaryData?.totalSolvedProblems || 0} className="mt-2 text-4xl font-extrabold text-green-500 animate-pop" />
         </div>
-        
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Submissions</h3>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">{summaryData?.totalSubmissions || 0}</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-sm font-bold text-indigo-700">Total Submissions</h3>
+          <AnimatedCounter value={summaryData?.totalSubmissions || 0} className="mt-2 text-4xl font-extrabold text-indigo-500 animate-pop" />
         </div>
-        
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">First Attempt Success Rate</h3>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">
-            {summaryData?.firstAttemptSuccessRate ? `${summaryData.firstAttemptSuccessRate}%` : '0%'}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">Problems solved on first try</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-sm font-bold text-indigo-700">First Attempt Success Rate</h3>
+          <ProgressRing percent={summaryData?.firstAttemptSuccessRate || 0} color="#f59e42" bg="#f3f4f6" label={summaryData?.firstAttemptSuccessRate ? `${summaryData.firstAttemptSuccessRate}%` : '0%'} />
+          <p className="mt-2 text-xs text-gray-500">Problems solved on first try</p>
         </div>
-        
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Avg Attempts per Problem</h3>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">
-            {summaryData?.averageAttemptsPerProblem || '0'}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">Submissions needed to solve</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-sm font-bold text-indigo-700">Avg Attempts per Problem</h3>
+          <AnimatedCounter value={summaryData?.averageAttemptsPerProblem || 0} className="mt-2 text-4xl font-extrabold text-pink-500 animate-pop" />
+          <p className="mt-2 text-xs text-gray-500">Submissions needed to solve</p>
         </div>
       </div>
       
