@@ -148,55 +148,75 @@ const ContestInstance = () => {
   const percentage = totalScore > 0 ? ((score / totalScore) * 100).toFixed(2) : '0.00';
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Contest #{contest.id}</h1>
-        <div className="mb-2">Duration: {contest.duration} min</div>
-        <div className="mb-2">Start Time: {new Date(contest.startTime).toLocaleString()}</div>
-        <div className="mb-2">End Time: {new Date(contest.endTime).toLocaleString()}</div>
+    <div className="space-y-10 w-full py-8 px-0 md:px-8">
+      <div className="bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl border border-indigo-100 backdrop-blur-lg p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-3xl text-indigo-400">🏆</span>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-900 tracking-wide drop-shadow">Contest #{contest.id}</h1>
+        </div>
+        <div className="flex flex-wrap gap-4 mb-6">
+          <span className="inline-flex items-center px-4 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm shadow border border-indigo-200">
+            Duration: {contest.duration} min
+          </span>
+          <span className="inline-flex items-center px-4 py-1 rounded-full bg-blue-100 text-blue-700 font-bold text-sm shadow border border-blue-200">
+            Start Time: {new Date(contest.startTime).toLocaleString()}
+          </span>
+          <span className="inline-flex items-center px-4 py-1 rounded-full bg-purple-100 text-purple-700 font-bold text-sm shadow border border-purple-200">
+            End Time: {new Date(contest.endTime).toLocaleString()}
+          </span>
+        </div>
         {!handle && (
           <div className="mb-4 text-red-600 font-semibold">No Codeforces handle found in your profile. Please add it in your profile page.</div>
         )}
         {!contestStarted && (
-          <div className="py-10 text-center text-gray-500">
+          <div className="py-10 text-center text-indigo-500 font-semibold text-lg">
             Contest scheduled. Waiting to start at {formatTime(new Date(contest.startTime))}...
           </div>
         )}
         {contestStarted && !contestEnded && showProblem === null && (
-          <div className="mb-4">
-            <span className="font-semibold">Time Left: </span>
-            <span className="font-mono text-lg">{formatTimeLeft(timeLeft)}</span>
+          <div className="mb-6 flex flex-wrap gap-4 items-center">
+            <span className="inline-flex items-center px-4 py-1 rounded-full bg-green-100 text-green-700 font-bold text-lg shadow border border-green-200">
+              Time Left: <span className="ml-2 font-mono">{formatTimeLeft(timeLeft)}</span>
+            </span>
+            <span className="inline-flex items-center px-4 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold text-lg shadow border border-indigo-200">
+              Total Score for this Contest: {totalScore}
+            </span>
           </div>
         )}
         {contestStarted && !contestEnded && showProblem === null && (
           <>
-            <div className="mb-2 text-md font-semibold text-indigo-700">Total Score for this Contest: {totalScore}</div>
             <div className="overflow-x-auto mb-4">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-indigo-100 bg-white/80 rounded-xl shadow">
+                <thead className="bg-white/60">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verdict</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Problem</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Score</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Statement</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Verdict</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white/80 divide-y divide-indigo-50">
                   {contest.problems.map((problem, idx) => (
-                    <tr key={problem._id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                    <tr key={problem._id} className="hover:bg-indigo-50/60 transition">
+                      <td className="px-6 py-4 whitespace-nowrap text-indigo-900 font-bold">{problem.title}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-3 py-1 rounded-full font-bold shadow text-xs ${
+                          problem.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                          problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {problem.difficulty}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{problem.difficulty}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-indigo-700 font-bold">
                         {getProblemScore(problem.difficulty)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <a
                           href={problem.url}
-                          className="text-indigo-600 hover:text-indigo-900 underline"
+                          className="text-indigo-600 hover:text-indigo-900 underline font-bold"
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -207,7 +227,7 @@ const ContestInstance = () => {
                         {verdictLoading[problem.platformId] ? (
                           <span className="text-xs text-gray-500">Fetching...</span>
                         ) : verdicts[problem.platformId] ? (
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(verdicts[problem.platformId])}`}>
+                          <span className={`px-3 py-1 rounded-full font-bold shadow text-xs ${getStatusBadgeClass(verdicts[problem.platformId])}`}>
                             {formatStatus(verdicts[problem.platformId])}
                           </span>
                         ) : verdictError[problem.platformId] ? (
@@ -216,7 +236,7 @@ const ContestInstance = () => {
                           <span className="text-xs text-gray-400">Not fetched</span>
                         )}
                         <button
-                          className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs font-medium"
+                          className="ml-2 px-3 py-1 rounded-lg font-bold shadow bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 border-2 border-indigo-100 hover:bg-indigo-200 transition text-xs"
                           onClick={() => fetchVerdict(problem)}
                           disabled={verdictLoading[problem.platformId] || !handle}
                         >
@@ -225,7 +245,7 @@ const ContestInstance = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
-                          className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs font-medium"
+                          className="px-4 py-2 rounded-lg font-bold shadow bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 border-2 border-indigo-100 hover:bg-indigo-200 transition text-xs"
                           onClick={() => setShowProblem(idx)}
                         >
                           View
@@ -236,9 +256,9 @@ const ContestInstance = () => {
                 </tbody>
               </table>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-6">
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                className="px-6 py-2 rounded-xl font-bold shadow bg-gradient-to-r from-green-500 to-green-400 text-white border-2 border-green-200 hover:scale-105 hover:bg-green-600 transition"
                 onClick={() => {
                   // Mark contest as submitted in history
                   const history = JSON.parse(localStorage.getItem('contestHistory') || '[]');
@@ -254,7 +274,7 @@ const ContestInstance = () => {
                 Submit Contest
               </button>
               <button
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="px-6 py-2 rounded-xl font-bold shadow bg-gradient-to-r from-red-500 to-red-400 text-white border-2 border-red-200 hover:scale-105 hover:bg-red-600 transition"
                 onClick={() => {
                   // Remove contest from history (exit)
                   const history = JSON.parse(localStorage.getItem('contestHistory') || '[]');

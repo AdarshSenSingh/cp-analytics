@@ -172,37 +172,105 @@ const Contest = () => {
 
   // Main contest UI
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">My Contest</h1>
+    <div className="space-y-10 w-full py-8 px-0 md:px-8">
+      {/* Contest History Section */}
+      <div className="bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl border border-indigo-100 backdrop-blur-lg p-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl text-indigo-400">📜</span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-900 tracking-wide drop-shadow">My Contest History</h1>
+          </div>
+          <button
+            className="px-6 py-2 rounded-xl font-bold shadow bg-gradient-to-r from-indigo-500 to-blue-500 text-white border-2 border-indigo-200 hover:scale-105 hover:bg-indigo-600 transition"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Schedule New Contest
+          </button>
+        </div>
+        {/* Contest History Table (replace with dynamic data) */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-indigo-100 bg-white/80 rounded-xl shadow">
+            <thead className="bg-white/60">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Contest ID</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Duration</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Problems</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Start Time</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Score</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white/80 divide-y divide-indigo-50">
+              {/* Example static data, replace with dynamic mapping */}
+              {[{
+                id: 1, duration: '30 min', problems: 1, start: '7/18/2025, 9:54:03 AM', score: '0 / 50'
+              }, {
+                id: 3, duration: '30 min', problems: 1, start: '7/18/2025, 9:58:22 AM', score: '0 / 75'
+              }, {
+                id: 4, duration: '60 min', problems: 2, start: '7/18/2025, 10:30:42 AM', score: '0 / 175'
+              }, {
+                id: 5, duration: '60 min', problems: 2, start: '7/18/2025, 10:32:40 AM', score: '0 / 175'
+              }, {
+                id: 6, duration: '90 min', problems: 3, start: '7/18/2025, 12:59:56 PM', score: '0 / 225'
+              }].map((row, idx) => (
+                <tr key={row.id} className="hover:bg-indigo-50/60 transition">
+                  <td className="px-6 py-4 whitespace-nowrap text-indigo-900 font-bold">{row.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-indigo-700 font-semibold">{row.duration}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-indigo-700 font-semibold">{row.problems}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-indigo-700 font-semibold">{row.start}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-indigo-700 font-bold">{row.score}</td>
+                  <td className="px-6 py-4 whitespace-nowrap flex gap-2">
+                    <button
+                      className="px-4 py-2 rounded-lg font-bold shadow bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 border-2 border-indigo-100 hover:bg-indigo-200 transition text-xs"
+                    >
+                      View
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-lg font-bold shadow bg-gradient-to-r from-green-100 to-green-200 text-green-700 border-2 border-green-200 hover:bg-green-200 transition text-xs"
+                    >
+                      Reattempt
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* Main Contest Section */}
+      <div className="bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl border border-indigo-100 backdrop-blur-lg p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-3xl text-indigo-400">🏆</span>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-900 tracking-wide drop-shadow">My Contest</h1>
+        </div>
         {/* Scheduling UI */}
         {!scheduled && (
-          <div className="mb-6">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Duration</label>
+          <div className="mb-8 bg-white/80 rounded-xl p-6 shadow flex flex-col md:flex-row md:items-end gap-6 border border-indigo-100">
+            <div>
+              <label className="block text-sm font-bold text-indigo-700 mb-1">Select Duration</label>
               <select
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
-                className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="block w-48 rounded-xl border-indigo-200 bg-white/80 shadow focus:border-indigo-400 focus:ring-indigo-400 sm:text-sm px-3 py-2"
               >
                 {DURATION_OPTIONS.map(mins => (
                   <option key={mins} value={mins}>{mins} min ({Math.ceil(mins/30)} problems)</option>
                 ))}
               </select>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Time (optional)</label>
+            <div>
+              <label className="block text-sm font-bold text-indigo-700 mb-1">Start Time (optional)</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="block w-48 rounded-xl border-indigo-200 bg-white/80 shadow focus:border-indigo-400 focus:ring-indigo-400 sm:text-sm px-3 py-2"
               />
               <div className="text-xs text-gray-500 mt-1">Leave blank to start now</div>
             </div>
             <button
               onClick={handleSchedule}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              className="px-6 py-2 rounded-xl font-bold shadow bg-gradient-to-r from-indigo-500 to-blue-500 text-white border-2 border-indigo-200 hover:scale-105 hover:bg-indigo-600 transition mt-4 md:mt-0"
             >
               Schedule Contest
             </button>
@@ -210,7 +278,7 @@ const Contest = () => {
         )}
         {/* Waiting for contest to start */}
         {scheduled && !contestStarted && (
-          <div className="py-10 text-center text-gray-500">
+          <div className="py-10 text-center text-indigo-500 font-semibold text-lg">
             Contest scheduled. Waiting to start at {startTime ? startTime : formatTime(new Date())}...
           </div>
         )}
@@ -224,31 +292,39 @@ const Contest = () => {
             <div className="py-10 text-center text-gray-500">No contest problems found.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-indigo-100 bg-white/80 rounded-xl shadow">
+                <thead className="bg-white/60">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Problem</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Score</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Statement</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white/80 divide-y divide-indigo-50">
                   {problems.map((problem, idx) => (
-                    <tr key={problem._id}>
+                    <tr key={problem._id} className="hover:bg-indigo-50/60 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                        <div className="text-sm font-bold text-indigo-900">{problem.title}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{problem.difficulty}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-3 py-1 rounded-full font-bold shadow text-xs ${
+                          problem.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                          problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {problem.difficulty}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-700 font-bold">
                         {problem.difficulty === 'hard' ? 100 : problem.difficulty === 'medium' ? 75 : 50}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <a
                           href={problem.url}
-                          className="text-indigo-600 hover:text-indigo-900 underline"
+                          className="text-indigo-600 hover:text-indigo-900 underline font-bold"
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -256,13 +332,13 @@ const Contest = () => {
                         </a>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(verdicts[problem._id])}`}>
+                        <span className={`px-3 py-1 rounded-full font-bold shadow text-xs ${getStatusBadgeClass(verdicts[problem._id])}`}>
                           {formatStatus(verdicts[problem._id])}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
-                          className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs font-medium"
+                          className="px-4 py-2 rounded-lg font-bold shadow bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 border-2 border-indigo-100 hover:bg-indigo-200 transition text-xs"
                           onClick={() => setShowProblem(idx)}
                         >
                           View

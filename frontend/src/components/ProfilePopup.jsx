@@ -80,6 +80,8 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
         };
         if (profilePictureUrl) updatedUser.profilePicture = profilePictureUrl;
         onUpdate(updatedUser);
+        // Persist updated user to localStorage for future popups
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         if (profilePictureUrl) setProfilePic(profilePictureUrl);
         setProfilePicFile(null);
         setIsEditing(false);
@@ -109,17 +111,20 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
-        <div className="bg-indigo-600 px-4 py-3 flex justify-between items-center">
-          <h2 className="text-white font-medium">User Profile</h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="fixed inset-0 bg-gradient-to-br from-indigo-400/40 via-blue-200/30 to-purple-200/40 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-gradient-to-br from-indigo-100/80 via-blue-50/90 to-purple-100/80 rounded-2xl shadow-2xl border border-indigo-100 w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-indigo-100 bg-white/60">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl text-indigo-400">👤</span>
+            <h2 className="text-lg font-bold text-indigo-900 tracking-wide">User Profile</h2>
+          </div>
+          <button onClick={onClose} className="text-indigo-400 hover:text-indigo-600 transition">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="p-4">
+        <div className="p-6">
           {isEditing ? (
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col items-center mb-4">
@@ -252,14 +257,32 @@ const ProfilePopup = ({ user, onClose, onUpdate }) => {
           ) : (
             <div>
               <div className="flex flex-col items-center justify-center mb-4">
-                <div className="relative w-20 h-20 mb-2">
+                <div className="relative w-24 h-24 mb-2 group">
                   <img
-                    src={user?.profilePicture || '/default-avatar.png'}
+                    src={profilePic || user?.profilePicture || '/default-avatar.png'}
                     alt="Profile"
-                    className="w-20 h-20 object-cover rounded-full border-4 border-indigo-200 shadow"
+                    className="w-24 h-24 object-cover rounded-full border-4 border-indigo-200 shadow transition-all duration-200 group-hover:brightness-90"
                     onError={e => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-1.5 hover:bg-indigo-700 shadow-lg border-2 border-white transition-all duration-200 opacity-90 group-hover:opacity-100"
+                    title="Change profile photo"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 10-4-4l-8 8v3z" />
+                    </svg>
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleProfilePicChange}
+                    className="hidden"
+                  />
                 </div>
+                <span className="text-xs text-gray-500">Click the camera to change</span>
               </div>
               <div className="text-center mb-4">
                 <h3 className="text-xl font-bold">{user?.name}</h3>

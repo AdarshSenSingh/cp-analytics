@@ -406,7 +406,6 @@ const Analytics = () => {
         ))}
       </div>
       <Confetti show={confetti} />
-      <Mascot animate={mascotAnim} onClick={() => { setAIModalOpen(true); setAIModalCode(''); setAIModalError(''); }} />
       {aiModalOpen && (
         <AIAssistantModal
           open={aiModalOpen}
@@ -523,56 +522,75 @@ const Analytics = () => {
       </div>
       
       {/* Difficulty Distribution */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Problem Difficulty Distribution</h2>
+      <div className="bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl overflow-hidden border border-indigo-100 backdrop-blur-lg">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-indigo-100 bg-white/60">
+          <span className="text-2xl text-yellow-400">🥧</span>
+          <h2 className="text-lg font-bold text-indigo-900 tracking-wide">Problem Difficulty Distribution</h2>
         </div>
         <div className="p-6">
-          <div className="h-64 flex justify-center">
-            <Pie data={difficultyChartData} options={{ maintainAspectRatio: false }} />
+          <div className="h-64 flex justify-center items-center bg-white/60 rounded-xl shadow-inner">
+            <Pie data={difficultyChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-            <div>
-              <span className="inline-block w-3 h-3 bg-green-400 rounded-full mr-1"></span>
-              <span className="text-sm font-medium">Easy: {summaryData?.problemsByDifficulty?.easy || 0}</span>
-            </div>
-            <div>
-              <span className="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span>
-              <span className="text-sm font-medium">Medium: {summaryData?.problemsByDifficulty?.medium || 0}</span>
-            </div>
-            <div>
-              <span className="inline-block w-3 h-3 bg-red-400 rounded-full mr-1"></span>
-              <span className="text-sm font-medium">Hard: {summaryData?.problemsByDifficulty?.hard || 0}</span>
-            </div>
+          <div className="mt-6 flex justify-center gap-6">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold text-sm shadow">
+              <span className="w-3 h-3 bg-green-400 rounded-full mr-2"></span>
+              Easy: {summaryData?.problemsByDifficulty?.easy || 0}
+            </span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 font-bold text-sm shadow">
+              <span className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></span>
+              Medium: {summaryData?.problemsByDifficulty?.medium || 0}
+            </span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm shadow">
+              <span className="w-3 h-3 bg-red-400 rounded-full mr-2"></span>
+              Hard: {summaryData?.problemsByDifficulty?.hard || 0}
+            </span>
           </div>
         </div>
       </div>
       
       {/* Topics Analysis */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Topics Mastery (Perfect Solves)</h2>
-          <p className="text-sm text-gray-500 mt-1">Topics where you solved problems on the first attempt</p>
+      <div className="bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl overflow-hidden border border-indigo-100 backdrop-blur-lg mt-8">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-indigo-100 bg-white/60">
+          <span className="text-2xl text-blue-400">📊</span>
+          <h2 className="text-lg font-bold text-indigo-900 tracking-wide">Topics Mastery (Perfect Solves)</h2>
         </div>
         <div className="p-6">
-          <div className="h-80">
+          <div className="h-80 bg-white/60 rounded-xl shadow-inner flex items-center">
             <Bar 
               data={topicsChartData} 
               options={{
                 maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: '#6366f1',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                  }
+                },
                 scales: {
                   y: {
                     beginAtZero: true,
+                    border: { color: '#a5b4fc' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Problems Solved'
-                    }
+                      text: 'Problems Solved',
+                      color: '#6366f1',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#6366f1', font: { weight: 'bold' } }
                   },
                   x: {
+                    border: { color: '#a5b4fc' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Topics'
-                    }
+                      text: 'Topics',
+                      color: '#6366f1',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#6366f1', font: { weight: 'bold' } }
                   }
                 }
               }} 
@@ -582,43 +600,43 @@ const Analytics = () => {
       </div>
       
       {/* Problems with Most Mistakes */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Problems with Most Mistakes</h2>
-          <p className="text-sm text-gray-500 mt-1">Problems with wrong submissions in the selected date range</p>
+      <div className="bg-gradient-to-br from-red-100/60 via-pink-50/80 to-purple-100/60 rounded-2xl shadow-xl overflow-hidden border border-red-100 backdrop-blur-lg mt-8">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-red-100 bg-white/60">
+          <span className="text-2xl text-red-400">❗</span>
+          <h2 className="text-lg font-bold text-red-700 tracking-wide">Problems with Most Mistakes</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto p-4">
+          <table className="min-w-full divide-y divide-red-100">
+            <thead className="bg-white/60">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong Submissions</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topics</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-red-700 uppercase tracking-wider">Problem</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-red-700 uppercase tracking-wider">Wrong Submissions</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-red-700 uppercase tracking-wider">Topics</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-red-700 uppercase tracking-wider">Notes</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white/80 divide-y divide-red-50">
               {topicsMistakesData.length > 0 ? (
                 topicsMistakesData.map((problem, problemIndex) => (
-                  <tr key={problem.id} className={problemIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <tr key={problem.id} className="hover:bg-red-50/60 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full">
-                          <span className="text-sm font-medium">{problemIndex + 1}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-red-200 text-red-700 rounded-full font-extrabold text-lg shadow">
+                          {problemIndex + 1}
                         </div>
-                        <div className="ml-4">
+                        <div>
                           <a 
                             href={problem.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-sm text-indigo-600 hover:text-indigo-900 mr-2"
+                            className="text-base font-bold text-indigo-700 hover:underline mr-2"
                           >
                             {problem.title}
                           </a>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            problem.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                            problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                          <span className={`ml-2 text-xs px-2 py-1 rounded-full font-bold shadow ${
+                            problem.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                            problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
                           }`}>
                             {problem.difficulty}
                           </span>
@@ -626,16 +644,17 @@ const Analytics = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm shadow">
+                        <svg className="w-4 h-4 mr-1 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         {problem.mistakeCount} wrong submissions
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-2">
                         {problem.topics && problem.topics.map((topic, i) => (
                           <span 
                             key={i} 
-                            className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
+                            className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-semibold shadow"
                           >
                             {topic}
                           </span>
@@ -644,24 +663,24 @@ const Analytics = () => {
                     </td>
                     <td className="px-6 py-4">
                       {editingNoteId === problem.id ? (
-                        <div className="flex flex-col space-y-2">
+                        <div className="flex flex-col space-y-3 bg-gradient-to-br from-indigo-100/60 via-blue-50/80 to-purple-100/60 p-4 rounded-xl shadow-lg">
                           <textarea
                             value={noteText}
                             onChange={(e) => setNoteText(e.target.value)}
-                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            className="w-full rounded-xl border border-indigo-200 bg-white/70 p-3 text-sm text-gray-800 placeholder-gray-400 shadow-inner focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition"
                             rows="3"
                             placeholder="Add notes, concepts, or hints..."
                           />
-                          <div className="flex space-x-2">
+                          <div className="flex gap-3 justify-end mt-2">
                             <button
                               onClick={() => handleSaveNote(problem.id)}
-                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                              className="inline-flex items-center px-5 py-2 rounded-lg bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700 transition border-2 border-indigo-300"
                             >
                               Save
                             </button>
                             <button
                               onClick={() => setEditingNoteId(null)}
-                              className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                              className="inline-flex items-center px-5 py-2 rounded-lg bg-white text-gray-700 font-bold shadow border-2 border-gray-200 hover:bg-gray-100 transition"
                             >
                               Cancel
                             </button>
@@ -675,10 +694,10 @@ const Analytics = () => {
                                 ? handleViewNote(problem, problemNotes[problem.id]) 
                                 : handleEditNote(problem.id, '')
                             }
-                            className={`inline-flex items-center px-3 py-1.5 border text-xs font-medium rounded-md ${
+                            className={`inline-flex items-center px-4 py-1.5 border text-xs font-bold rounded-lg shadow transition-all ${
                               problemNotes[problem.id] 
                                 ? 'border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100' 
-                                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                                : 'border-gray-300 text-gray-700 bg-white hover:bg-purple-50'
                             } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
                           >
                             {problemNotes[problem.id] ? (
@@ -778,29 +797,48 @@ const Analytics = () => {
       )}
       
       {/* Activity Over Time */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Activity Over Time</h2>
+      <div className="bg-gradient-to-br from-green-100/60 via-blue-50/80 to-purple-100/60 rounded-2xl shadow-xl overflow-hidden border border-green-100 backdrop-blur-lg mt-8">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-green-100 bg-white/60">
+          <span className="text-2xl text-green-400">📅</span>
+          <h2 className="text-lg font-bold text-green-700 tracking-wide">Activity Over Time</h2>
         </div>
         <div className="p-6">
-          <div className="h-80">
+          <div className="h-80 bg-white/60 rounded-xl shadow-inner flex items-center">
             <Bar 
               data={activityChartData} 
               options={{
                 maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: true, labels: { color: '#059669', font: { weight: 'bold' } } },
+                  tooltip: {
+                    backgroundColor: '#059669',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                  }
+                },
                 scales: {
                   y: {
                     beginAtZero: true,
+                    border: { color: '#6ee7b7' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Problems Solved'
-                    }
+                      text: 'Problems Solved',
+                      color: '#059669',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#059669', font: { weight: 'bold' } }
                   },
                   x: {
+                    border: { color: '#6ee7b7' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Date'
-                    }
+                      text: 'Date',
+                      color: '#059669',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#059669', font: { weight: 'bold' } }
                   }
                 }
               }} 
@@ -810,49 +848,57 @@ const Analytics = () => {
       </div>
       
       {/* Problem Ratings Breakdown */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Problem Ratings Breakdown</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Distribution of solved problems by difficulty rating
-            {ratingsData && ratingsData.unknown > 0 && 
-              ` (Additionally, ${ratingsData.unknown} problems with unknown rating)`
-            }
-          </p>
+      <div className="bg-gradient-to-br from-indigo-100/60 via-blue-50/80 to-purple-100/60 rounded-2xl shadow-xl overflow-hidden border border-indigo-100 backdrop-blur-lg mt-8">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-indigo-100 bg-white/60">
+          <span className="text-2xl text-indigo-400">🏷️</span>
+          <h2 className="text-lg font-bold text-indigo-700 tracking-wide">Problem Ratings Breakdown</h2>
         </div>
         <div className="p-6">
-          <div className="h-80">
+          <div className="mb-3">
+            <span className="inline-block text-sm text-indigo-700 font-semibold">Distribution of solved problems by difficulty rating</span>
+            {ratingsData && ratingsData.unknown > 0 && (
+              <span className="ml-3 inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs shadow">
+                Additionally, {ratingsData.unknown} problems with unknown rating
+              </span>
+            )}
+          </div>
+          <div className="h-80 bg-white/60 rounded-xl shadow-inner flex items-center">
             <Bar 
               data={ratingsChartData} 
               options={{
                 maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: '#6366f1',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                  }
+                },
                 scales: {
                   y: {
                     beginAtZero: true,
-                    ticks: {
-                      precision: 0, // Force integer ticks
-                      stepSize: 1,  // Minimum step size of 1
-                    },
-                    suggestedMax: Math.ceil(maxRatingValue * 1.1), // Add 10% padding to the max value
+                    border: { color: '#a5b4fc' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Problems Solved'
-                    }
+                      text: 'Problems Solved',
+                      color: '#6366f1',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#6366f1', font: { weight: 'bold' } },
+                    suggestedMax: Math.ceil(maxRatingValue * 1.1)
                   },
                   x: {
+                    border: { color: '#a5b4fc' },
+                    grid: { color: '#e0e7ef' },
                     title: {
                       display: true,
-                      text: 'Problem Rating'
-                    }
-                  }
-                },
-                plugins: {
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        return `Problems Solved: ${context.raw}`;
-                      }
-                    }
+                      text: 'Problem Rating',
+                      color: '#6366f1',
+                      font: { weight: 'bold' }
+                    },
+                    ticks: { color: '#6366f1', font: { weight: 'bold' } }
                   }
                 }
               }} 

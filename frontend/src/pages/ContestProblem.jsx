@@ -51,16 +51,37 @@ const ContestProblem = () => {
   if (!problem) return null;
 
   return (
-    <div className="max-w-2xl mx-auto bg-white shadow rounded-lg p-6 mt-8">
-      <button onClick={() => navigate('/contest')} className="mb-4 text-indigo-600 hover:underline">&larr; Back to Contest</button>
-      <h2 className="text-xl font-bold mb-2">{problem.title}</h2>
-      <div className="mb-2 text-sm text-gray-500">Difficulty: {problem.difficulty}</div>
-      <div className="mb-4">
-        <a href={problem.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 underline">View Problem Statement on Codeforces</a>
+    <div className="max-w-2xl mx-auto bg-gradient-to-br from-indigo-100/70 via-blue-50/80 to-purple-100/70 rounded-2xl shadow-xl border border-indigo-100 backdrop-blur-lg p-8 mt-8">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => navigate('/contest')} className="text-indigo-600 hover:underline font-bold text-lg flex items-center gap-1">
+          <span className="text-2xl">←</span> Back to Contest
+        </button>
       </div>
-      <div className="mb-4">
-        <span className="font-semibold">Time Left: </span>
-        <span className="font-mono text-lg">{formatTimeLeft(timeLeft)}</span>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-2xl text-indigo-400">📄</span>
+        <h2 className="text-xl md:text-2xl font-extrabold text-indigo-900 tracking-wide drop-shadow">{problem.title}</h2>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
+        <span className={`px-4 py-1 rounded-full font-bold shadow text-sm border ${
+          problem.difficulty === 'hard' ? 'bg-red-100 text-red-700 border-red-200' :
+          problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+          'bg-green-100 text-green-700 border-green-200'
+        }`}>
+          Difficulty: {problem.difficulty}
+        </span>
+        <a
+          href={problem.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center px-4 py-1 rounded-full font-bold shadow bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-700 border-2 border-indigo-200 hover:bg-indigo-200 transition text-sm"
+        >
+          View Problem Statement on Codeforces
+        </a>
+      </div>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="inline-flex items-center px-4 py-1 rounded-full bg-green-100 text-green-700 font-bold text-lg shadow border border-green-200">
+          Time Left: <span className="ml-2 font-mono">{formatTimeLeft(timeLeft)}</span>
+        </span>
       </div>
     </div>
   );
