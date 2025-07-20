@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import AIAssistantModal from '../components/AIAssistantModal';
 
 function getContestById(id) {
   const history = JSON.parse(localStorage.getItem('contestHistory') || '[]');
@@ -42,6 +43,12 @@ function formatStatus(verdict) {
   return verdict.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function getProblemScore(difficulty) {
+  if (difficulty === 'hard') return 100;
+  if (difficulty === 'medium') return 75;
+  return 50;
+}
+
 const ContestInstance = () => {
   const { contestId } = useParams();
   const navigate = useNavigate();
@@ -53,6 +60,11 @@ const ContestInstance = () => {
   const [verdictLoading, setVerdictLoading] = useState({}); // {platformId: boolean}
   const [verdictError, setVerdictError] = useState({}); // {platformId: string}
   const timerRef = useRef();
+  // AI Assistant Modal state
+  const [aiModalOpen, setAIModalOpen] = useState(false);
+  const [aiModalProblem, setAIModalProblem] = useState(null);
+  // Local state to end contest without reload
+  const [forceContestEnd, setForceContestEnd] = useState(false);
 
   useEffect(() => {
     const c = getContestById(contestId);
@@ -117,8 +129,23 @@ const ContestInstance = () => {
   if (!contest) return null;
 
   const contestStarted = now >= contest.startTime;
-  const contestEnded = now >= contest.endTime;
+  const contestEnded = forceContestEnd || now >= contest.endTime;
   const timeLeft = Math.max(0, Math.floor((contest.endTime - now) / 1000));
+
+  // Calculate score and percentage after contest ends
+  let score = 0;
+  let totalScore = 0;
+  if (contest && contest.problems) {
+    totalScore = contest.problems.reduce((acc, p) => acc + getProblemScore(p.difficulty), 0);
+    score = contest.problems.reduce((acc, p) => {
+      const verdict = verdicts[p.platformId];
+      if (verdict === 'OK') {
+        return acc + getProblemScore(p.difficulty);
+      }
+      return acc;
+    }, 0);
+  }
+  const percentage = totalScore > 0 ? ((score / totalScore) * 100).toFixed(2) : '0.00';
 
   return (
     <div className="space-y-6">
@@ -143,12 +170,14 @@ const ContestInstance = () => {
         )}
         {contestStarted && !contestEnded && showProblem === null && (
           <>
+            <div className="mb-2 text-md font-semibold text-indigo-700">Total Score for this Contest: {totalScore}</div>
             <div className="overflow-x-auto mb-4">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verdict</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -161,6 +190,9 @@ const ContestInstance = () => {
                         <div className="text-sm font-medium text-gray-900">{problem.title}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{problem.difficulty}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {getProblemScore(problem.difficulty)}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <a
                           href={problem.url}
@@ -215,9 +247,9 @@ const ContestInstance = () => {
                     history[idx].submitted = true;
                     localStorage.setItem('contestHistory', JSON.stringify(history));
                   }
-                  // Optionally show a message or redirect
-                  window.location.href = '/contest';
+                  setForceContestEnd(true);
                 }}
+                disabled={forceContestEnd}
               >
                 Submit Contest
               </button>
@@ -251,7 +283,32 @@ const ContestInstance = () => {
           </div>
         )}
         {contestEnded && (
-          <div className="py-10 text-center text-green-600 font-bold">Contest Ended!</div>
+          <div className="py-10 text-center text-green-600 font-bold">
+            <div className="mb-4 text-2xl">Contest Ended!</div>
+            <div className="mb-2 text-lg text-gray-900">Score: {score} / {totalScore}</div>
+            <div className="mb-2 text-lg text-gray-900">Percentage: {percentage}%</div>
+            <button
+              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              onClick={() => setAIModalOpen(true)}
+            >
+              Want to improve performance?
+            </button>
+            <button
+              className="mt-4 ml-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              onClick={() => navigate('/contest')}
+            >
+              Return to Contest Home
+            </button>
+            {aiModalOpen && (
+              <AIAssistantModal
+                open={aiModalOpen}
+                onClose={() => setAIModalOpen(false)}
+                code={''}
+                language={''}
+                problemTitle={'Contest Performance'}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

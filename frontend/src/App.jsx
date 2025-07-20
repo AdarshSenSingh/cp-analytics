@@ -16,6 +16,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import ContestMain from './pages/ContestMain';
 import ContestInstance from './pages/ContestInstance';
 import ContestNew from './pages/ContestNew';
+import CSESProblemset from './pages/CSESProblemset';
+import StriverSheet from './pages/StriverSheet';
+import LoveBabbarSheet from './pages/LoveBabbarSheet';
 
 const Contest = React.lazy(() => import('./pages/Contest'));
 const ContestProblem = React.lazy(() => import('./pages/ContestProblem'));
@@ -43,6 +46,9 @@ function App() {
             <Route path="/contest" element={<ContestMain />} />
             <Route path="/contest/new" element={<ContestNew />} />
             <Route path="/contest/:contestId" element={<ContestInstance />} />
+            <Route path="/cses" element={<CSESProblemset />} />
+            <Route path="/striver" element={<StriverSheet />} />
+            <Route path="/lovebabbar" element={<LoveBabbarSheet />} />
           </Route>
           {/* Redirect root to dashboard or login */}
           <Route path="/" element={<Navigate to={isAuthenticated ? (role === 'admin' ? "/admin-dashboard" : "/dashboard") : "/login"} />} />
