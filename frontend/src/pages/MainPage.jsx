@@ -266,7 +266,7 @@ const MainPage = () => {
           <div className="flex-1 flex flex-col items-start justify-center px-6 md:px-0">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-5xl text-yellow-300 drop-shadow">⚡</span>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-wide drop-shadow" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>CodeTracker</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-wide drop-shadow text-yellow-400" style={{ fontFamily: 'Poppins, Inter, sans-serif', color: '#FFD600' }}>CodeTracker</h1>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-indigo-100 mb-4 max-w-xl" style={{ fontFamily: 'Poppins, Inter, sans-serif' }}>Supercharge Your Coding Journey</h2>
             <p className="text-lg text-indigo-200 mb-6 max-w-xl" style={{ fontFamily: 'Inter, sans-serif' }}>Track. Practice. Improve. — All in one platform.<br />
@@ -300,9 +300,13 @@ const MainPage = () => {
               <DynamicTypeText textArray={["Welcome back, Coder!", "Here’s a quick overview of your progress today."]} />
               <pre className="mt-4 text-[#ffb347] text-xs font-mono whitespace-pre break-words select-all bg-transparent border-none p-0 max-w-full overflow-x-auto">
 {`<div class="tracker-summary">
-  <h2>Welcome back, Coder!</h2>
-  <p>Here’s a quick overview of your progress today.</p>
-</div>`}
+
+<h2>Welcome back, Coder!</h2>
+
+<p>Here’s a quick overview of your progress today.</p>
+
+</div>
+`}
               </pre>
             </FloatingPanel>
             {/* JS Panel */}
@@ -313,14 +317,21 @@ const MainPage = () => {
             >
               <pre className="text-[#61dafb] text-xs font-mono whitespace-pre break-words select-all bg-transparent border-none p-0 max-w-full overflow-x-auto">
 {`const stats = {
-  problemsSolved: 328,
-  streak: "14 days",
-  favoriteTopic: "Dynamic Programming"
+
+problemsSolved: 328,
+
+streak: "14 days",
+
+favoriteTopic: "Dynamic Programming"
+
 };
 
 function showSummary() {
-  console.log("Keep the streak alive! 💪");
-}`}
+
+console.log("Keep the streak alive! 💪");
+
+}
+`}
               </pre>
             </FloatingPanel>
             {/* SCSS Panel */}
@@ -330,19 +341,109 @@ function showSummary() {
               className="md:rotate-[-2deg] rotate-[1deg] z-30"
             >
               <pre className="text-[#7ee787] text-xs font-mono whitespace-pre break-words select-all bg-transparent border-none p-0 max-w-full overflow-x-auto">
-{`$gray: #e0e0e0;
-$dark-gray: #232526;
+{`.tracker-summary {
 
-.rect {
-  width: 120px;
-  height: 60px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, $gray 0%, $dark-gray 100%);
-}`}
+background: linear-gradient(135deg, #1F1F1F, #2D2D2D);
+
+border-left: 4px solid #DE7300;
+
+padding: 1rem;
+
+font-family: 'Fira Code', monospace;
+
+}
+`}
               </pre>
             </FloatingPanel>
           </div>
         </section>
+        {/* Modern Feature Cards Section */}
+        {/* Modern Feature Cards Section */}
+{/* Modern Feature Cards Section */}
+{/* Modern Feature Cards Section */}
+{/* Modern Feature Cards Section */}
+{/* Modern Feature Cards Section */}
+<section className="w-full flex flex-col items-center justify-center py-8 relative z-10">
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 w-full max-w-6xl px-4">
+    {[
+      { icon: '📊', title: 'Coding Analytics', desc: '**Track** your progress with charts, rating graphs, and more.' },
+      { icon: '📚', title: 'Topic-wise Progress', desc: '**See** your strengths and weaknesses by topic.' },
+      { icon: '🤖', title: 'CodeBot AI Mentor', desc: '**Get** instant feedback and next-step suggestions.' },
+      { icon: '🧪', title: 'Virtual Contests', desc: '**Practice** with real contest formats and get instant analysis.' },
+      { icon: '🎖️', title: 'Achievements & Badges', desc: '**Earn** badges for streaks, milestones, and mastery.' },
+      { icon: '📅', title: 'Practice Scheduler', desc: '**Set** daily/weekly goals and stay consistent.' },
+    ].map((f, i) => {
+      const match = f.desc.match(/\*\*(.*?)\*\*\s*(.*)/);
+      const boldWord = match ? match[1] : '';
+      const rest = match ? match[2] : f.desc;
+      return (
+        <div
+          key={i}
+          className="relative flex flex-col justify-between items-center bg-gradient-to-br from-[#23272f] via-[#232526] to-[#23272f] shadow-2xl min-h-[400px] max-w-md mx-auto px-0 pt-24 pb-7 group creative-card-border"
+          style={{
+            borderRadius: '2.5rem 2.5rem 2.5rem 2.5rem / 2rem 2.5rem 2.5rem 2.5rem',
+            clipPath: 'polygon(0 10%, 100% 0, 100% 90%, 0 100%)',
+            boxShadow: '0 8px 32px 0 rgba(255,214,0,0.25), 0 0 0 6px #FFD60044, 0 0 0 12px #23272f',
+            border: '4px solid transparent',
+            backgroundImage: 'linear-gradient(#23272f, #232526), linear-gradient(120deg, #FFD600 0%, #FFB347 50%, #FFEA00 100%)',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            overflow: 'visible',
+          }}
+        >
+          {/* Rope (SVG line) */}
+          <svg
+            className="absolute left-1/2 -translate-x-1/2 -top-24 z-10"
+            width="2"
+            height="72"
+            viewBox="0 0 2 72"
+            style={{ pointerEvents: 'none' }}
+          >
+            <line x1="1" y1="0" x2="1" y2="72" stroke="#b3b3b3" strokeWidth="2" strokeDasharray="4 4" />
+          </svg>
+          <div className="flex flex-col items-center px-7 pt-6 w-full">
+            <h3
+              className="text-2xl font-extrabold text-white mb-2 text-center tracking-tight flex items-center justify-center gap-2"
+              style={{
+                fontFamily: 'Poppins, Montserrat, Inter, sans-serif',
+                letterSpacing: '.01em',
+                transform: 'rotate(-4deg)',
+                textShadow: '0 2px 8px #23272f88',
+                marginTop: '0.5rem',
+              }}
+            >
+              {f.title}
+              <span className="ml-2 text-2xl select-none" aria-label={f.title} style={{ maxHeight: '2.2rem', lineHeight: 1 }}>{f.icon}</span>
+            </h3>
+            <p
+              className="text-indigo-200 text-base text-center mb-8"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                transform: 'rotate(-3deg)',
+                fontWeight: 500,
+                lineHeight: 1.6,
+              }}
+            >
+              <span className="font-extrabold text-indigo-100">{boldWord}</span>{' '}
+              <span className="font-medium">{rest}</span>
+            </p>
+          </div>
+          <div className="flex-1" />
+          <div className="flex justify-center w-full">
+            <button className="mt-auto w-4/5 py-3 rounded-full font-bold shadow bg-gradient-to-r from-indigo-500 to-blue-500 text-white border-2 border-indigo-200 hover:scale-105 hover:from-indigo-600 hover:to-blue-600 hover:shadow-indigo-500/40 transition text-base text-center tracking-wide backdrop-blur-lg group-hover:ring-2 group-hover:ring-blue-400 group-hover:ring-offset-2"
+              style={{
+                fontFamily: 'Poppins, Montserrat, Inter, sans-serif',
+                letterSpacing: '.02em',
+                marginTop: '1.5rem',
+              }}>
+              <span className="drop-shadow">Learn More</span>
+            </button>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</section>
         {/* ...rest of your sections (valueProps, features, testimonials, etc.) ... */}
         {/* (Keep the rest of your page as in your previous code) */}
       </div>
