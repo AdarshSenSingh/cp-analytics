@@ -13,7 +13,7 @@ const Navbar = ({ onMenuClick }) => {
     localStorage.removeItem('role');
     localStorage.removeItem('username');
     setDropdownOpen(false);
-    window.location = '/login'; // Ensures full session reset
+    window.location = '/'; // Ensures full session reset and goes to main page
   };
 
   return (

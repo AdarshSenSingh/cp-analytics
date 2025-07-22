@@ -8,8 +8,6 @@ import Submissions from './pages/Submissions';
 import Analytics from './pages/Analytics';
 import Platforms from './pages/Platforms';
 import SubmissionDetail from './pages/SubmissionDetail';
-import Login from './pages/Login';
-import Register from './pages/Register';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -31,13 +29,10 @@ function App() {
     <>
       <React.Suspense fallback={<div>Loading...</div>}>
         <Routes>
-          {/* Auth Routes */}
-          <Route path="/login" element={!isAuthenticated ? <Login /> : (role === 'admin' ? <Navigate to="/admin-dashboard" /> : <Navigate to="/dashboard" />)} />
-          <Route path="/register" element={!isAuthenticated ? <Register /> : (role === 'admin' ? <Navigate to="/admin-dashboard" /> : <Navigate to="/dashboard" />)} />
           {/* Admin Dashboard Route */}
-          <Route path="/admin-dashboard" element={isAuthenticated && role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
+          <Route path="/admin-dashboard" element={isAuthenticated && role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
           {/* Protected Routes with Layout */}
-          <Route element={isAuthenticated && role === 'user' ? <Layout /> : <Navigate to="/login" />}>
+          <Route element={isAuthenticated && role === 'user' ? <Layout /> : <Navigate to="/" />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/problems" element={<Problems />} />
             <Route path="/submissions" element={<Submissions />} />

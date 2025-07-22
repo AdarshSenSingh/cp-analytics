@@ -81,7 +81,7 @@ const Sidebar = ({ onAIBuddyClick }) => {
           className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold shadow bg-gradient-to-r from-red-500 to-pink-500 text-white border-2 border-red-200 hover:scale-105 hover:bg-red-600 transition"
           onClick={() => {
             localStorage.clear();
-            window.location.href = '/login';
+            window.location.href = '/';
           }}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" /></svg>
