@@ -19,6 +19,7 @@ import ContestNew from './pages/ContestNew';
 import CSESProblemset from './pages/CSESProblemset';
 import StriverSheet from './pages/StriverSheet';
 import LoveBabbarSheet from './pages/LoveBabbarSheet';
+import MainPage from './pages/MainPage';
 
 const Contest = React.lazy(() => import('./pages/Contest'));
 const ContestProblem = React.lazy(() => import('./pages/ContestProblem'));
@@ -50,8 +51,8 @@ function App() {
             <Route path="/striver" element={<StriverSheet />} />
             <Route path="/lovebabbar" element={<LoveBabbarSheet />} />
           </Route>
-          {/* Redirect root to dashboard or login */}
-          <Route path="/" element={<Navigate to={isAuthenticated ? (role === 'admin' ? "/admin-dashboard" : "/dashboard") : "/login"} />} />
+          {/* Main landing page */}
+          <Route path="/" element={<MainPage />} />
         </Routes>
       </React.Suspense>
       <ToastContainer position="top-right" autoClose={5000} />
