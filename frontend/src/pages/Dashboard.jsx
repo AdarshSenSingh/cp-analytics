@@ -10,48 +10,56 @@ import { analyticsAPI, platformsAPI } from '../services/api';
 
 Chart.register(CategoryScale, LinearScale, LineElement, BarElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-// --- Creative Dynamic Components ---
-const Confetti = ({ show }) => show ? (
-  <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
-    {[...Array(60)].map((_, i) => (
-      <div
-        key={i}
-        className="absolute rounded-full opacity-80 animate-confetti"
-        style={{
-          width: `${Math.random() * 8 + 4}px`,
-          height: `${Math.random() * 8 + 4}px`,
-          background: `hsl(${Math.random() * 360}, 90%, 60%)`,
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          animationDuration: `${Math.random() * 1.5 + 1}s`,
-        }}
-      />
-    ))}
-  </div>
-) : null;
+// --- Professional Dynamic Components ---
+// Confetti removed for a more professional look
+const Confetti = () => null;
 
-const AnimatedCounter = ({ value, duration = 1200, className = "" }) => {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const end = value || 0;
-    if (start === end) return;
-    let increment = end / (duration / 16);
-    let raf;
-    const animate = () => {
-      start += increment;
-      if ((increment > 0 && start >= end) || (increment < 0 && start <= end)) {
-        setCount(end);
-        return;
+// Dynamic tip text with continuous typewriter cycling effect
+const DynamicTipText = ({ tips }) => {
+  const [tipIndex, setTipIndex] = React.useState(0);
+  const [displayed, setDisplayed] = React.useState('');
+  const [typing, setTyping] = React.useState(true);
+
+  // Defensive: filter out any undefined or empty tips
+  const safeTips = Array.isArray(tips) ? tips.filter(t => typeof t === 'string' && t.trim().length > 0) : [];
+  const currentTip = safeTips[tipIndex] || '';
+
+  React.useEffect(() => {
+    setDisplayed('');
+    setTyping(true);
+    if (!currentTip) return;
+    let i = -1;
+    const interval = setInterval(() => {
+      // Only add if character exists
+      if (i < currentTip.length-1) {
+        setDisplayed(t => t + currentTip[i]);
+        i++;
+      } else {
+        clearInterval(interval);
+        setTyping(false);
       }
-      setCount(Math.round(start));
-      raf = requestAnimationFrame(animate);
-    };
-    animate();
-    return () => raf && cancelAnimationFrame(raf);
-  }, [value, duration]);
-  return <span className={className}>{count}</span>;
+    }, 22);
+    return () => clearInterval(interval);
+  }, [tipIndex, currentTip]);
+
+  React.useEffect(() => {
+    if (!typing) {
+      const timeout = setTimeout(() => {
+        setTipIndex((prev) => (prev + 1) % safeTips.length);
+      }, 1800);
+      return () => clearTimeout(timeout);
+    }
+  }, [typing, safeTips.length]);
+
+  return (
+    <span className="italic text-base md:text-lg font-semibold tracking-wide text-[#7c4a03] whitespace-nowrap overflow-x-auto" style={{transition:'color 0.3s'}}>
+      {currentTip && `“${displayed}”`}
+    </span>
+  );
 };
+
+// AnimatedCounter removed for simplicity and professionalism
+const AnimatedCounter = ({ value, className = "" }) => <span className={className}>{value}</span>;
 
 const ProgressRing = ({ percent, size = 80, stroke = 8, color = '#6366f1', bg = '#e0e7ef', label = '' }) => {
   const r = (size - stroke) / 2;
@@ -66,19 +74,7 @@ const ProgressRing = ({ percent, size = 80, stroke = 8, color = '#6366f1', bg = 
   );
 };
 
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes confetti {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(200px) scale(0.7); opacity: 0; }
-}
-.animate-confetti { animation: confetti linear forwards; }
-@keyframes pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-.animate-pop { animation: pop 0.5s cubic-bezier(.68,-0.55,.27,1.55); }
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-.animate-fade-in { animation: fade-in 0.3s; }
-`;
-document.head.appendChild(style);
+// Removed custom confetti and pop/fade-in animations for a cleaner, more professional look
 
 const Dashboard = () => {
 
@@ -101,13 +97,12 @@ const Dashboard = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [tip, setTip] = useState('');
   const tips = [
-    "Tip of the day: Practice makes perfect: solve at least one problem every day!",
-    "Tip of the day: Read problem statements carefully before coding.",
-    "Tip of the day: Did you know? You can optimize your code by reducing time complexity!",
-    "Tip of the day: Don't be afraid to ask for help when you need it.",
-    "Tip of the day: Don't forget to check out the community forums for help and support.",
-    "Tip of the day: Keep practicing and improving your skills!",
-    "Tip of the day: Don't be afraid to ask for help"
+    "Practice makes perfect: solve at least one problem every day!",
+    "Read problem statements carefully before coding.",
+    "Did you know? You can optimize your code by reducing time complexity!",
+    "Don't be afraid to ask for help when you need it.",
+    "Don't forget to check out the community forums for help and support.",
+    "Keep practicing and improving your skills!"
   ];
   const [stats, setStats] = useState(null);
   const [submissionActivity, setSubmissionActivity] = useState([]);
@@ -268,12 +263,12 @@ const Dashboard = () => {
   return (
     <>
       <div className="space-y-8">
-        <div className="bg-gradient-to-r from-indigo-600/80 via-blue-500/80 to-purple-500/80 text-white p-7 rounded-2xl shadow-2xl flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 border border-white/10 backdrop-blur-xl">
+        <div className="bg-white text-gray-900 p-7 rounded-xl shadow flex flex-col md:flex-row justify-between items-center sticky top-0 z-20 border border-gray-200">
           <div className="flex items-center gap-5 w-full md:w-auto">
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-lg border-4 border-indigo-300 hover:scale-105 transition-transform overflow-hidden"
+                className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center shadow border-2 border-gray-300 hover:bg-gray-200 transition overflow-hidden"
               >
                 {user?.profilePicture ? (
                   <img src={user.profilePicture} alt="Profile" className="h-14 w-14 rounded-full object-cover" onError={e => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }} />
@@ -301,12 +296,12 @@ const Dashboard = () => {
               )}
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold drop-shadow-sm">
+              <h1 className="text-3xl md:text-4xl font-bold">
                 Welcome, {user?.name || 'Coder'}!
               </h1>
               {user?.platformAccounts && user.platformAccounts.length > 0 && (
-                <div className="mt-2 text-base font-semibold text-indigo-100 flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-700/60 text-xs font-bold uppercase tracking-wider">
+                <div className="mt-2 text-base font-semibold text-gray-600 flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-200 text-xs font-bold uppercase tracking-wider">
                     <svg className="w-4 h-4 mr-1 text-yellow-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" /></svg>
                     Connected Platforms: {user.platformAccounts.map(acc => acc.platform).join(', ')}
                   </span>
@@ -317,7 +312,7 @@ const Dashboard = () => {
           <div className="flex flex-col items-end gap-2 mt-6 md:mt-0 w-full md:w-auto">
             <button
               onClick={() => setShowAIImprovement(true)}
-              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 text-indigo-900 rounded-xl shadow-lg border-2 border-yellow-200 text-base font-bold hover:scale-105 hover:bg-yellow-400/90 transition"
+              className="flex items-center gap-2 px-6 py-2 bg-gray-200 text-gray-800 rounded-lg shadow border border-gray-300 text-base font-semibold hover:bg-gray-300 transition"
             >
               <svg className="w-5 h-5 text-indigo-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               Want to improve ratings?
@@ -326,41 +321,40 @@ const Dashboard = () => {
         </div>
         {/* Tip and Motivational Tip & KPIs */}
         <div className="px-6 space-y-4 mb-4">
-          {/* Enhanced Tip of the Day */}
-          <div className="relative flex items-center justify-center">
-            <div className="w-full md:w-2/3 bg-gradient-to-r from-indigo-500/80 to-blue-400/80 backdrop-blur-lg rounded-2xl shadow-xl p-5 flex items-center gap-4 border border-white/20">
-              <span className="flex-shrink-0 text-3xl md:text-4xl text-yellow-300 drop-shadow mr-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+          <div className="flex justify-center">
+            <div className="w-full md:w-2/3 bg-gray-50 rounded-lg shadow-sm px-4 py-2 flex items-center gap-2 border border-gray-200 min-h-[48px]">
+              <span className="flex-shrink-0 text-xl md:text-2xl text-yellow-700">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.05 17.95l-1.414 1.414m12.728 0l-1.414-1.414M6.05 6.05L4.636 4.636" />
                 </svg>
               </span>
-              <span className="italic text-lg md:text-xl text-white font-medium tracking-wide drop-shadow-sm">“{tip}”</span>
+              <DynamicTipText tips={tips} />
             </div>
           </div>
-          {/* Modern KPI Cards */}
+          {/* KPI Cards - Professional Style */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-indigo-700 animate-pop">{kpis.currentRating}</div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-indigo-700">{kpis.currentRating}</div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Current Rating</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-blue-700 animate-pop">{kpis.maxRating}</div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-blue-700">{kpis.maxRating}</div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Max Rating</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-purple-700 animate-pop">{kpis.bestRank}</div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-purple-700">{kpis.bestRank}</div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Best Rank</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-green-700 animate-pop">{kpis.streak} <span className="text-base font-bold">days</span></div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-green-700">{kpis.streak} <span className="text-base font-semibold">days</span></div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Current Streak</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-pink-700 animate-pop">{kpis.avgSolveTime}</div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-pink-700">{kpis.avgSolveTime}</div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Avg Solve Time</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl text-center shadow-lg border border-gray-100 hover:scale-105 transition-transform">
-              <div className="text-2xl font-extrabold text-red-700 animate-pop">{kpis.wrongRate}</div>
+            <div className="bg-white p-4 rounded-xl text-center shadow border border-gray-200">
+              <div className="text-2xl font-bold text-red-700">{kpis.wrongRate}</div>
               <div className="text-xs uppercase tracking-wider text-gray-500 mt-1">Wrong Submission Rate</div>
             </div>
           </div>
@@ -368,8 +362,15 @@ const Dashboard = () => {
 
         {/* Target/Goal Section */}
         <div className="flex justify-center">
-          <div className="w-full md:w-2/3 lg:w-1/2 bg-gradient-to-br from-indigo-500 via-blue-400 to-purple-400 rounded-2xl shadow-xl p-8 mb-8 relative overflow-hidden animate-fade-in">
-            <h2 className="text-2xl font-bold text-white mb-4 text-center drop-shadow">🎯 Set Your Daily/Custom Target</h2>
+          <div className="w-full md:w-2/3 lg:w-1/2 bg-white rounded-xl shadow p-8 mb-8 relative overflow-hidden">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 Set Your Daily/Custom Target</h2>
+            {/* Eye-catching info badge */}
+            <div className="flex justify-center mb-6">
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-full font-semibold shadow-sm animate-pulse hover:animate-none transition">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Set a target and boost your consistency!</span>
+              </div>
+            </div>
             {showConfetti && <Confetti show={true} />}
             {!targetSet ? (
               <form
@@ -383,9 +384,9 @@ const Dashboard = () => {
                 }}
               >
                 <div>
-                  <label className="block text-sm font-medium text-white">Target Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Target Type</label>
                   <select
-                    className="mt-1 block w-full rounded-md border-2 border-white bg-white bg-opacity-80 shadow focus:border-purple-400 focus:ring-purple-400 sm:text-sm px-2 py-1"
+                    className="mt-1 block w-full rounded-md border-2 border-gray-300 bg-white shadow focus:border-blue-400 focus:ring-blue-400 sm:text-sm px-2 py-1 transition hover:border-blue-500"
                     value={targetType}
                     onChange={e => setTargetType(e.target.value)}
                   >
@@ -395,11 +396,11 @@ const Dashboard = () => {
                 </div>
                 {targetType === 'problems' && (
                   <div>
-                    <label className="block text-sm font-medium text-white">Problems per day</label>
+                    <label className="block text-sm font-medium text-gray-700">Problems per day</label>
                     <input
                       type="number"
                       min="1"
-                      className="mt-1 block w-full rounded-md border-2 border-white bg-white bg-opacity-80 shadow focus:border-purple-400 focus:ring-purple-400 sm:text-sm px-2 py-1"
+                      className="mt-1 block w-full rounded-md border-2 border-gray-300 bg-white shadow focus:border-blue-400 focus:ring-blue-400 sm:text-sm px-2 py-1 transition hover:border-blue-500"
                       value={targetValue}
                       onChange={e => setTargetValue(Number(e.target.value))}
                     />
@@ -407,7 +408,7 @@ const Dashboard = () => {
                 )}
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-lg shadow-lg hover:scale-105 transition font-bold text-lg"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:scale-105 transition font-semibold text-lg"
                 >
                   Set Target
                 </button>
@@ -429,19 +430,19 @@ const Dashboard = () => {
                         percent={Math.min(100, Math.round((problemsSolvedToday / targetValue) * 100))}
                         size={64}
                         stroke={8}
-                        color="#facc15"
+                        color="#2563eb"
                         bg="#e0e7ef"
                         label={`${Math.min(100, Math.round((problemsSolvedToday / targetValue) * 100))}%`}
                       />
-                      <span className="text-white text-sm font-semibold">{problemsSolvedToday} / {targetValue} solved</span>
-                      <span className="text-xs text-yellow-100 italic animate-fade-in">
+                      <span className="text-gray-800 text-sm font-semibold">{problemsSolvedToday} / {targetValue} solved</span>
+                      <span className="text-xs text-gray-500 italic">
                         {getMotivation(Math.min(100, Math.round((problemsSolvedToday / targetValue) * 100)))}
                       </span>
                     </div>
                   )}
                   {targetType === 'contest' && (
                     <button
-                      className={`px-4 py-2 rounded-lg font-bold text-lg shadow-lg transition transform hover:scale-105 ${contestGiven ? 'bg-green-400 text-white' : 'bg-yellow-300 text-yellow-900 animate-pulse'}`}
+                      className={`px-4 py-2 rounded-lg font-semibold text-lg shadow transition ${contestGiven ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-800'}`}
                       onClick={() => {
                         setContestGiven(true);
                         setTargetCompleted(true);
@@ -454,7 +455,7 @@ const Dashboard = () => {
                     </button>
                   )}
                   <button
-                    className="px-3 py-1 rounded-md bg-white bg-opacity-80 text-gray-700 font-semibold border border-gray-200 hover:bg-purple-100 transition"
+                    className="px-3 py-1 rounded-md bg-gray-100 text-gray-700 font-semibold border border-gray-300 hover:bg-gray-200 transition"
                     onClick={() => { setTargetSet(false); setTargetCompleted(false); setShowConfetti(false); }}
                   >
                     Reset
@@ -464,7 +465,7 @@ const Dashboard = () => {
             )}
             {/* Reminder */}
             {targetSet && !targetCompleted && (
-              <div className="mt-6 p-4 bg-yellow-200 bg-opacity-80 border-l-4 border-yellow-500 text-yellow-900 rounded-lg text-center text-lg font-semibold animate-pulse">
+              <div className="mt-6 p-4 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-900 rounded-lg text-center text-lg font-semibold">
                 Reminder: Don't forget to complete your target today!
               </div>
             )}
