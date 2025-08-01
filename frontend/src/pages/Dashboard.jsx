@@ -11,8 +11,137 @@ import { analyticsAPI, platformsAPI } from '../services/api';
 Chart.register(CategoryScale, LinearScale, LineElement, BarElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 // --- Professional Dynamic Components ---
-// Confetti removed for a more professional look
-const Confetti = () => null;
+// Celebration Animation: Child dancing with trophy and raining ribbons
+const Celebration = ({ show, onEnd }) => {
+  const [visible, setVisible] = React.useState(show);
+  React.useEffect(() => {
+    if (show) {
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+        if (onEnd) onEnd();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onEnd]);
+  if (!visible) return null;
+  return (
+    <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',pointerEvents:'none',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}}>
+      {/* Celebration message */}
+      <div style={{
+        fontSize: '3vw',
+        fontWeight: 'bold',
+        color: '#fff',
+        textShadow: '2px 2px 8px #000, 0 0 16px #fbbf24',
+        marginBottom: '2vh',
+        letterSpacing: '2px',
+        zIndex: 20,
+        textAlign: 'center',
+        userSelect: 'none',
+      }}>
+        WoW! Target Completed
+      </div>
+      {/* Ribbons and papers */}
+      <div style={{position:'absolute',top:0,left:0,width:'100vw',height:'100vh',overflow:'hidden'}}>
+        {[...Array(80)].map((_,i) => {
+          const size = 16 + Math.random() * 16;
+          const rotate = Math.random() * 360;
+          return (
+            <div key={i} style={{
+              position:'absolute',
+              left:`${Math.random()*100}vw`,
+              top:`-${Math.random()*20+5}vh`,
+              animation:`fall${i%5} 5s linear forwards`,
+              zIndex:2
+            }}>
+              <svg width={size} height={size*1.2} viewBox="0 0 24 32">
+                <rect width={size/2} height={size} rx={size/8} fill={["#fbbf24","#34d399","#60a5fa","#f472b6","#f87171"][i%5]} transform={`rotate(${rotate})`} />
+              </svg>
+            </div>
+          );
+        })}
+        <style>{`
+          @keyframes fall0 { to { transform: translateY(110vh) rotate(180deg); } }
+          @keyframes fall1 { to { transform: translateY(120vh) rotate(360deg); } }
+          @keyframes fall2 { to { transform: translateY(115vh) rotate(270deg); } }
+          @keyframes fall3 { to { transform: translateY(125vh) rotate(90deg); } }
+          @keyframes fall4 { to { transform: translateY(130vh) rotate(300deg); } }
+        `}</style>
+      </div>
+      {/* Dancing child with trophy (SVG illustration, full body, large) */}
+      <div style={{zIndex:10,animation:'dance 1s infinite alternate',pointerEvents:'none',width:'50vw',height:'80vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <svg width="100%" height="100%" viewBox="0 0 600 900">
+          {/* Trophy - more realistic, classic cup with handles and highlights */}
+          <g>
+            {/* Cup body with gold gradient */}
+            <defs>
+              <linearGradient id="trophyGold" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fffbe6"/>
+                <stop offset="40%" stopColor="#ffe066"/>
+                <stop offset="100%" stopColor="#bfa100"/>
+              </linearGradient>
+            </defs>
+            {/* Main cup */}
+            <ellipse cx="420" cy="170" rx="60" ry="50" fill="url(#trophyGold)" stroke="#b45309" strokeWidth="8" />
+            {/* Cup opening rim */}
+            <ellipse cx="420" cy="140" rx="65" ry="18" fill="#fffbe6" stroke="#b45309" strokeWidth="5" />
+            {/* Cup base */}
+            <rect x="390" y="210" width="60" height="30" rx="15" fill="#bfa100" stroke="#b45309" strokeWidth="5" />
+            <rect x="400" y="240" width="40" height="18" rx="8" fill="#bfa100" stroke="#b45309" strokeWidth="3" />
+            {/* Handles */}
+            <path d="M355 170 Q320 120 420 120" stroke="#b45309" strokeWidth="10" fill="none" />
+            <path d="M485 170 Q520 120 420 120" stroke="#b45309" strokeWidth="10" fill="none" />
+            {/* Shine highlight */}
+            <ellipse cx="400" cy="155" rx="12" ry="22" fill="#fff" opacity="0.4" />
+            {/* Trophy shadow */}
+            <ellipse cx="420" cy="265" rx="30" ry="8" fill="#bfa100" opacity="0.3" />
+          </g>
+          {/* Child body */}
+          <g>
+            {/* Head */}
+            <circle cx="300" cy="200" r="90" fill="#fde68a" stroke="#fbbf24" strokeWidth="8" />
+            {/* Face features */}
+            <ellipse cx="270" cy="210" rx="12" ry="18" fill="#fff" />
+            <ellipse cx="330" cy="210" rx="12" ry="18" fill="#fff" />
+            <circle cx="270" cy="215" r="6" fill="#222" />
+            <circle cx="330" cy="215" r="6" fill="#222" />
+            <path d="M270 250 Q300 280 330 250" stroke="#b45309" strokeWidth="7" fill="none" />
+            {/* Smile blush */}
+            <ellipse cx="250" cy="240" rx="10" ry="5" fill="#fbbf24" opacity="0.4" />
+            <ellipse cx="350" cy="240" rx="10" ry="5" fill="#fbbf24" opacity="0.4" />
+            {/* Body */}
+            <rect x="210" y="290" width="180" height="260" rx="60" fill="#60a5fa" />
+            {/* Left Arm (trophy hand) */}
+            <rect x="340" y="220" width="50" height="180" rx="25" fill="#fde68a" transform="rotate(-20 365 310)" />
+            {/* Right Arm */}
+            <rect x="110" y="320" width="50" height="180" rx="25" fill="#fde68a" transform="rotate(20 135 410)" />
+            {/* Left Hand (trophy) */}
+            <ellipse cx="420" cy="180" rx="25" ry="18" fill="#fde68a" stroke="#b45309" strokeWidth="4" />
+            {/* Right Hand */}
+            <ellipse cx="160" cy="480" rx="25" ry="18" fill="#fde68a" stroke="#b45309" strokeWidth="4" />
+            {/* Shorts */}
+            <rect x="230" y="540" width="60" height="70" rx="20" fill="#3b82f6" />
+            <rect x="310" y="540" width="60" height="70" rx="20" fill="#3b82f6" />
+            {/* Left Leg */}
+            <rect x="230" y="610" width="40" height="180" rx="20" fill="#b45309" transform="rotate(-10 250 700)" />
+            {/* Right Leg */}
+            <rect x="330" y="610" width="40" height="180" rx="20" fill="#b45309" transform="rotate(10 350 700)" />
+            {/* Left Foot */}
+            <ellipse cx="250" cy="800" rx="35" ry="18" fill="#fde68a" stroke="#b45309" strokeWidth="4" />
+            {/* Right Foot */}
+            <ellipse cx="350" cy="800" rx="35" ry="18" fill="#fde68a" stroke="#b45309" strokeWidth="4" />
+          </g>
+        </svg>
+      </div>
+      <style>{`
+        @keyframes dance {
+          0% { transform: translateY(0) rotate(-5deg) scale(1); }
+          100% { transform: translateY(-30px) rotate(5deg) scale(1.05); }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 // Dynamic tip text with continuous typewriter cycling effect
 const DynamicTipText = ({ tips }) => {
@@ -379,22 +508,24 @@ const Dashboard = () => {
 
         {/* Target/Goal Section */}
         <div className="flex justify-center">
-          <div className="w-full md:w-2/3 lg:w-1/2 bg-white rounded-xl shadow p-8 mb-8 relative overflow-hidden">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 Set Your Daily Contest Target</h2>
-            <div className="flex justify-center mb-6">
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-full font-semibold shadow-sm animate-pulse hover:animate-none transition">
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow p-10 mb-8 relative overflow-hidden mx-auto">
+            <h2 className="text-3xl font-extrabold text-indigo-800 mb-2 text-center flex items-center justify-center gap-2">
+              <span role="img" aria-label="target">🎯</span> Set Your Daily Target
+            </h2>
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-900 px-5 py-3 rounded-xl font-semibold shadow-sm animate-pulse hover:animate-none transition text-base">
+                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <span>Set the time you want to give your contest. <span className='font-semibold text-primary-600'>You will receive a reminder 5 minutes before the contest.</span></span>
               </div>
             </div>
             <form
-              className="flex flex-col md:flex-row md:items-end gap-4 justify-center"
+              className="flex flex-row flex-wrap gap-6 items-end w-full justify-center"
               onSubmit={async e => {
                 e.preventDefault();
                 const email = profile?.email;
-                const targetType = e.target.targetType.value;
+                const targetTypeValue = e.target.targetType.value;
                 try {
-                  if (targetType === 'contest') {
+                  if (targetTypeValue === 'contest') {
                     const contestTime = e.target.contestTime.value;
                     await axios.post('/api/targets', {
                       targetType: 'contest',
@@ -404,6 +535,7 @@ const Dashboard = () => {
                       headers: { 'x-auth-token': token }
                     });
                     alert('Contest target set! You will receive a reminder 5 minutes before the contest.');
+                    // Do NOT reset form for contest
                   } else {
                     const problemsPerDay = e.target.problemsPerDay.value;
                     await axios.post('/api/targets', {
@@ -414,40 +546,110 @@ const Dashboard = () => {
                       headers: { 'x-auth-token': token }
                     });
                     alert('Problems per day target set!');
+                    // Reset form to default after setting problems target
+                    setTargetType('problems');
+                    setTargetValue(3);
+                    setProblemsStatus([]);
+                    if (e.target.targetType) e.target.targetType.value = 'problems';
+                    if (e.target.problemsPerDay) e.target.problemsPerDay.value = 3;
                   }
                 } catch (err) {
                   alert('Failed to set target.');
                 }
               }}
             >
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Target Type</label>
-                <select name="targetType" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="problems" onChange={e => setTargetType(e.target.value)}>
-                  <option value="problems">Solve Problems</option>
-                  <option value="contest">Give a Contest</option>
+              <div className="flex flex-col items-center min-w-[180px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Target Type</label>
+                <select name="targetType" className="w-40 px-3 py-2 border border-gray-300 rounded-md text-center" defaultValue="problems" onChange={e => setTargetType(e.target.value)}>
+                  <option value="problems">Problems</option>
+                  <option value="contest">Contest</option>
                 </select>
               </div>
               {targetType === 'problems' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Problems per day</label>
-                  <input type="number" name="problemsPerDay" min="1" defaultValue={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                  <button
-                    type="button"
-                    className="mt-2 w-full bg-blue-100 text-blue-800 py-1 px-2 rounded hover:bg-blue-200 text-sm font-semibold border border-blue-200"
-                    onClick={() => setShowProblemsModal(true)}
-                  >
-                    Mark Problems Solved
-                  </button>
-                </div>
+                <>
+                  <div className="flex flex-col items-center min-w-[180px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Problems per day</label>
+                    <input type="number" name="problemsPerDay" min="1" defaultValue={3} className="w-32 px-3 py-2 border border-gray-300 rounded-md text-center" />
+                  </div>
+                  <div className="flex flex-col items-center min-w-[180px]">
+                    <button
+                      type="button"
+                      className="w-40 bg-blue-600 text-white py-2 px-4 rounded-md font-semibold shadow hover:bg-blue-700 transition whitespace-nowrap mb-1"
+                      onClick={() => setShowProblemsModal(true)}
+                    >
+                      Mark 
+                    </button>
+                    {/* Remaining Problems Reminder */}
+                    {(() => {
+                      const total = Number(document.querySelector('input[name="problemsPerDay"]')?.value || targetValue);
+                      const solved = problemsStatus.filter(Boolean).length;
+                      const remaining = total - solved;
+                      if (remaining > 0 && remaining < total) {
+                        return (
+                          <div className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-3 py-1 text-center font-semibold w-40 mt-1">
+                            Solve remaining {remaining} problem{remaining > 1 ? 's' : ''} to get target complete.
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {/* Target Done Badge & Celebration */}
+                    {Array.from({ length: Number(document.querySelector('input[name="problemsPerDay"]')?.value || targetValue) }).every((_, idx) => problemsStatus[idx]) && (
+                      <>
+                        <div className="flex items-center gap-2 justify-center mt-1">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 font-bold text-base border border-green-300 animate-bounce">
+                            <svg className="w-5 h-5 mr-1 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            Target Done! Achievement Unlocked!
+                          </span>
+                        </div>
+                        <Celebration show={true} />
+                      </>
+                    )}
+                  </div>
+                </>
               )}
               {targetType === 'contest' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Contest Time</label>
-                  <input type="time" name="contestTime" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
+                <>
+                  <div className="flex flex-col items-center min-w-[180px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Contest Time</label>
+                    <input type="time" name="contestTime" required className="w-40 px-3 py-2 border border-gray-300 rounded-md text-center" defaultValue={''} />
+                  </div>
+                  {/* Mark as Done button appears only after contest target is set */}
+                  {(() => {
+                    // Show "Mark as Done" if contest target is set (i.e., contestGivenDate in localStorage is not today)
+                    const today = new Date().toISOString().split('T')[0];
+                    const stored = localStorage.getItem('contestGivenDate');
+                    // If contestGiven is false, show the button
+                    if (!contestGiven) {
+                      return (
+                        <button
+                          type="button"
+                          className="w-40 bg-green-600 text-white py-2 px-4 rounded-md font-semibold shadow hover:bg-green-700 transition whitespace-nowrap mb-1 mt-2"
+                          onClick={() => {
+                            setContestGiven(true);
+                            setTargetCompleted(true);
+                            setShowConfetti(true);
+                            localStorage.setItem('contestGivenDate', today);
+                          }}
+                        >
+                          Mark as Done
+                        </button>
+                      );
+                    } else {
+                      return (
+                        <div className="flex items-center gap-2 justify-center mt-1">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 font-bold text-base border border-green-300 animate-bounce">
+                            <svg className="w-5 h-5 mr-1 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            Contest Done! Achievement Unlocked!
+                          </span>
+                        </div>
+                      );
+                    }
+                  })()}
+                </>
               )}
-              <div className="md:col-span-2">
-                <button type="submit" className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition">Set Target</button>
+              <div className="flex flex-col items-center min-w-[180px]">
+                <button type="submit" className="w-40 bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition">Set Target</button>
               </div>
             </form>
             {/* Old target/goal UI below, can be removed if not needed */}
@@ -732,6 +934,11 @@ const Dashboard = () => {
           onUpdate={handleProfileUpdate}
         />
       )}
+
+      {/* Celebration for problems or contest completion */}
+      {(Array.from({ length: Number(document.querySelector('input[name="problemsPerDay"]')?.value || targetValue) }).every((_, idx) => problemsStatus[idx]) && targetType === 'problems') || (contestGiven && targetType === 'contest') ? (
+        <Celebration show={true} />
+      ) : null}
 
       {/* Problems Solved Modal */}
       {showProblemsModal && (
