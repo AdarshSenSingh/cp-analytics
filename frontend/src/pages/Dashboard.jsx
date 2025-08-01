@@ -94,6 +94,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [tip, setTip] = useState('');
   const tips = [
@@ -125,6 +126,19 @@ const Dashboard = () => {
   const [problemsSolvedToday, setProblemsSolvedToday] = useState(0);
   const [contestGiven, setContestGiven] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // State for problem solved checkboxes and modal
+  const [showProblemsModal, setShowProblemsModal] = useState(false);
+  const [problemsStatus, setProblemsStatus] = useState(() => {
+    // Try to load from localStorage for persistence
+    const saved = localStorage.getItem('problemsStatus');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Update localStorage when problemsStatus changes
+  useEffect(() => {
+    localStorage.setItem('problemsStatus', JSON.stringify(problemsStatus));
+  }, [problemsStatus]);
 
   // Dynamic motivational messages
   const motivationalMessages = [
@@ -168,6 +182,9 @@ const Dashboard = () => {
         // Fetch user info
         const userRes = await axios.get('/api/auth/me', { headers: { 'x-auth-token': token } });
         setUser(userRes.data);
+        // Fetch profile info
+        const profileRes = await axios.get('/api/users/profile', { headers: { 'x-auth-token': token } });
+        setProfile(profileRes.data);
 
         // Fetch summary and activity data from analyticsAPI
         const params = new URLSearchParams();
@@ -363,56 +380,81 @@ const Dashboard = () => {
         {/* Target/Goal Section */}
         <div className="flex justify-center">
           <div className="w-full md:w-2/3 lg:w-1/2 bg-white rounded-xl shadow p-8 mb-8 relative overflow-hidden">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 Set Your Daily/Custom Target</h2>
-            {/* Eye-catching info badge */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 Set Your Daily Contest Target</h2>
             <div className="flex justify-center mb-6">
               <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-full font-semibold shadow-sm animate-pulse hover:animate-none transition">
                 <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Set a target and boost your consistency!</span>
+                <span>Set the time you want to give your contest. <span className='font-semibold text-primary-600'>You will receive a reminder 5 minutes before the contest.</span></span>
               </div>
             </div>
+            <form
+              className="flex flex-col md:flex-row md:items-end gap-4 justify-center"
+              onSubmit={async e => {
+                e.preventDefault();
+                const email = profile?.email;
+                const targetType = e.target.targetType.value;
+                try {
+                  if (targetType === 'contest') {
+                    const contestTime = e.target.contestTime.value;
+                    await axios.post('/api/targets', {
+                      targetType: 'contest',
+                      contestTime,
+                      email
+                    }, {
+                      headers: { 'x-auth-token': token }
+                    });
+                    alert('Contest target set! You will receive a reminder 5 minutes before the contest.');
+                  } else {
+                    const problemsPerDay = e.target.problemsPerDay.value;
+                    await axios.post('/api/targets', {
+                      targetType: 'problems',
+                      problemsPerDay,
+                      email
+                    }, {
+                      headers: { 'x-auth-token': token }
+                    });
+                    alert('Problems per day target set!');
+                  }
+                } catch (err) {
+                  alert('Failed to set target.');
+                }
+              }}
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Target Type</label>
+                <select name="targetType" className="w-full px-3 py-2 border border-gray-300 rounded-md" defaultValue="problems" onChange={e => setTargetType(e.target.value)}>
+                  <option value="problems">Solve Problems</option>
+                  <option value="contest">Give a Contest</option>
+                </select>
+              </div>
+              {targetType === 'problems' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Problems per day</label>
+                  <input type="number" name="problemsPerDay" min="1" defaultValue={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <button
+                    type="button"
+                    className="mt-2 w-full bg-blue-100 text-blue-800 py-1 px-2 rounded hover:bg-blue-200 text-sm font-semibold border border-blue-200"
+                    onClick={() => setShowProblemsModal(true)}
+                  >
+                    Mark Problems Solved
+                  </button>
+                </div>
+              )}
+              {targetType === 'contest' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contest Time</label>
+                  <input type="time" name="contestTime" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+              )}
+              <div className="md:col-span-2">
+                <button type="submit" className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition">Set Target</button>
+              </div>
+            </form>
+            {/* Old target/goal UI below, can be removed if not needed */}
+            {/*
             {showConfetti && <Confetti show={true} />}
             {!targetSet ? (
-              <form
-                className="flex flex-col md:flex-row md:items-end gap-4 justify-center"
-                onSubmit={e => {
-                  e.preventDefault();
-                  setTargetSet(true);
-                  setTargetCompleted(false);
-                  setShowConfetti(false);
-                  if (targetType === 'contest') setContestGiven(false);
-                }}
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Target Type</label>
-                  <select
-                    className="mt-1 block w-full rounded-md border-2 border-gray-300 bg-white shadow focus:border-blue-400 focus:ring-blue-400 sm:text-sm px-2 py-1 transition hover:border-blue-500"
-                    value={targetType}
-                    onChange={e => setTargetType(e.target.value)}
-                  >
-                    <option value="problems">Solve Problems</option>
-                    <option value="contest">Give a Contest</option>
-                  </select>
-                </div>
-                {targetType === 'problems' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Problems per day</label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="mt-1 block w-full rounded-md border-2 border-gray-300 bg-white shadow focus:border-blue-400 focus:ring-blue-400 sm:text-sm px-2 py-1 transition hover:border-blue-500"
-                      value={targetValue}
-                      onChange={e => setTargetValue(Number(e.target.value))}
-                    />
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:scale-105 transition font-semibold text-lg"
-                >
-                  Set Target
-                </button>
-              </form>
+              ...
             ) : (
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div className="text-white text-lg font-semibold flex flex-col items-center md:items-start">
@@ -689,6 +731,39 @@ const Dashboard = () => {
           onClose={() => setShowProfilePopup(false)}
           onUpdate={handleProfileUpdate}
         />
+      )}
+
+      {/* Problems Solved Modal */}
+      {showProblemsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
+            <h3 className="text-lg font-bold mb-4 text-center">Problems Progress</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {Array.from({ length: Number(document.querySelector('input[name="problemsPerDay"]')?.value || targetValue) }).map((_, idx) => (
+                <label key={idx} className="flex items-center gap-3 py-1 px-2 rounded hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={!!problemsStatus[idx]}
+                    onChange={e => {
+                      setProblemsStatus(prev => {
+                        const updated = [...prev];
+                        updated[idx] = e.target.checked;
+                        return updated;
+                      });
+                    }}
+                  />
+                  <span>Problem {idx + 1} {problemsStatus[idx] ? <span className="text-green-600">(Solved)</span> : <span className="text-red-500">(Not Solved)</span>}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              className="mt-6 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-semibold"
+              onClick={() => setShowProblemsModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </>
   )};

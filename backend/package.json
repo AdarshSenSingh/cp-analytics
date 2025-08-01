@@ -21,6 +21,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.1",
     "node-cron": "^3.0.3",
+    "nodemailer": "^7.0.5",
     "openai": "^3.2.1",
     "puppeteer": "^24.14.0"
   },

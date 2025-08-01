@@ -440,6 +440,51 @@ const Profile = () => {
               </div>
               
               {/* Achievements */}
+              {/* Daily/Custom Target Section */}
+              <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium flex items-center">🎯 Set Your Daily/Custom Target</h2>
+                  <p className="text-sm text-gray-500 mt-1">Set a target and boost your consistency!</p>
+                </div>
+                <div className="px-6 py-4">
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const targetType = e.target.targetType.value;
+                      const targetTime = e.target.targetTime.value;
+                      const email = profile.email;
+                      try {
+                        await axios.post('/api/targets', {
+                          targetType,
+                          targetTime,
+                          email
+                        }, {
+                          headers: { 'x-auth-token': token }
+                        });
+                        alert('Target set! You will receive an email reminder.');
+                      } catch (err) {
+                        alert('Failed to set target.');
+                      }
+                    }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Target Type</label>
+                      <select name="targetType" className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <option value="solve">Solve Problems</option>
+                        <option value="contest">Give a Contest</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                      <input type="time" name="targetTime" required className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <button type="submit" className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition">Set Target</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
               <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h2 className="text-lg font-medium">Achievements</h2>
